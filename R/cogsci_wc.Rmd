@@ -1,0 +1,218 @@
+---
+title: "CogSci Word Counts"
+author: "Lauren Oey"
+date: "11/24/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(ggplot2)
+require(cleanNLP)
+require(udpipe)
+require(stringi)
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+df <- read_csv("cogsci_abstracts.csv")
+df$abstract <- as.character(df$abstract)
+df$length <- str_count(df$abstract, pattern=" ")+1
+str(df)
+```
+
+```{r}
+words <- df %>%
+  mutate(abstract_cleaned = str_replace_all(abstract, c("e\\.g\\."="e1g1", "i\\.e\\."="i1e1")),
+         abstract_cleaned = str_replace_all(abstract_cleaned, c("[^a-zA-Z0-9\\&\\s]"=" ", "[\\n\\t\\f]"="")),
+         abstract_cleaned = str_replace_all(abstract_cleaned, c("e1g1"="e.g.", "i1e1"="i.e.")),
+         word = strsplit(abstract_cleaned, " ")) %>% 
+  unnest(word) %>%
+  filter(word != "") %>%
+  mutate(lowerword = tolower(word))
+```
+
+# Unfiltered Word Frequency Across All Abstracts
+
+```{r}
+words %>%
+  group_by(lowerword) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  head(40) %>%
+  ggplot(aes(x=reorder(lowerword,count), y=count)) +
+  geom_bar(stat="identity") +
+  ggtitle("Raw Word Count (All)") +
+  scale_x_discrete("Words") +
+  coord_flip()
+ggsave("graphs/rawWordCount.png")
+```
+
+Gets Lemma & POS Info using CleanNLP; Removes Function Words (e.g. determiners, prepositions)
+
+```{r}
+## First time running, you need to run this to extract the lemma/POS info from CleanNLP
+## This takes awhile, so it's better to save the CSV file and read in the file for future use
+
+cnlp_init_udpipe()
+obj <- cnlp_annotate(df$abstract, as_strings = TRUE, doc_ids=df$title)
+obj_token <- cnlp_get_token(obj)
+write.csv(obj_token, "token_info.csv")
+#obj_token <- read.csv("token_info.csv")
+
+## Filters out most POS, keeping nouns, verbs, adjectives, proper nouns, adverbs, numbers, 
+## and INTJ, which is kind of a mix of multiple things
+
+obj_token_cleaned <- obj_token %>%
+  filter(upos %in% c("NOUN", "VERB", "ADJ", "PROPN", "ADV", "NUM", "INTJ")) %>%
+  mutate(title = id) %>%
+  select("title","word","lemma")
+  
+write.csv(obj_token_cleaned, "token_info_cleaned.csv")
+```
+
+Joined CogSci Data + CleanNLP File (added lemma information)
+
+```{r}
+words_full <- inner_join(words, unique(obj_token_cleaned), by=c("title","word")) %>%
+  mutate(lowerlemma = tolower(lemma))
+```
+
+Lemma Word Count
+
+```{r}
+wc_overall <- words_full %>%
+  group_by(lowerlemma) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+write.csv(wc_overall, "wc_overall.csv")
+```
+
+```{r}
+ggplot(head(wc_overall, 40), aes(x=reorder(lowerlemma,count), y=count)) +
+  geom_bar(stat="identity") +
+  ggtitle("Lemma Count") +
+  scale_x_discrete("Lemmas") +
+  coord_flip()
+ggsave("graphs/overallPopWords.png")
+```
+
+```{r}
+wc_byYear <- words_full %>%
+  group_by(year,lowerlemma) %>%
+  summarise(count = n()) %>%
+  arrange(year,desc(count))
+write.csv(wc_byYear, "wc_byYear.csv")
+```
+
+```{r}
+wc_byYear %>%
+  group_by(year) %>%
+  top_n(10,count) %>%
+  ggplot(aes(x=reorder(lowerlemma,count), y=count)) +
+  geom_bar(stat="identity") +
+  ggtitle("Lemma Count") +
+  scale_x_discrete("Lemmas") +
+  coord_flip() +
+  facet_wrap(~year, nrow=2, scales="free") +
+  theme(axis.text.x=element_text(size=5))
+ggsave("graphs/wordsByYear.png")
+```
+
+```{r}
+wc_byTitle <- words_full %>%
+  group_by(year,title,lowerlemma) %>%
+  summarise(count = n()) %>%
+  arrange(year,title,desc(count))
+kable(head(wc_byTitle, 20))
+write.csv(wc_byTitle, "wc_byTitle.csv")
+```
+
+```{r}
+byAuthor <- words_full %>%
+  mutate(authors=stri_trans_general(authors, "latin-ascii"),
+         author=str_replace_all(authors, ",$", ""),
+         author=str_replace_all(author, c(".*\n"="", " *\\(.*?\\)"="", "  "=" ")),
+         author=str_replace_all(author, " & ", ", "),
+         author=strsplit(author, ", ")) %>%
+  unnest(author) %>%
+  filter(!grepl("University|Institute|Center|Centre|Centro|School|Department|Dept|Unit|Hospital|\\d",
+                author)) %>%
+  mutate(author=trimws(author),
+         authorWord = word(author, -1),
+         authorAbbr = paste(substring(author,1,1), word(author, -1)))
+
+wc_byAuthor <- byAuthor %>%
+  group_by(authorAbbr, lowerlemma) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count),authorAbbr)
+write.csv(wc_byAuthor, "wc_byAuthor.csv")
+```
+
+```{r}
+wc_byAuthor %>%
+  mutate(authorLemma = paste(authorAbbr, lowerlemma, sep=": ")) %>%
+  arrange(desc(count),authorAbbr) %>%
+  head(40) %>%
+  ggplot(aes(x=reorder(authorLemma,count), y=count)) +
+  geom_bar(stat="identity") +
+  ggtitle("Author and Lemma Count") +
+  scale_x_discrete("Author: Lemma") +
+  coord_flip()
+ggsave("graphs/AuthorWords.png")
+```
+
+```{r}
+leaders <- byAuthor %>%
+  select("year","authorAbbr","title") %>%
+  unique() %>%
+  group_by(year, authorAbbr) %>%
+  summarise(totalPapers = n()) %>%
+  top_n(3, totalPapers)
+leaders %>% arrange(year,desc(totalPapers)) %>%
+  kable(caption="Top 3 Authors w/ Most Papers by Year")
+```
+
+```{r}
+## Approximately corresponds to top 3 authors by number of papers published
+byAuthor %>%
+  group_by(year, authorAbbr) %>%
+  summarise(total = n()) %>%
+  top_n(3, total) %>%
+  arrange(year, desc(total)) %>%
+  kable(caption="Top 3 Authors w/ Most Abstract Words by Year")
+```
+
+```{r}
+leaderFaveWords <- byAuthor %>%
+  filter(authorAbbr %in% leaders$authorAbbr) %>%
+  group_by(authorAbbr, lowerlemma) %>%
+  summarise(count = n()) %>%
+  top_n(5, count) %>%
+  mutate(authorWord = paste(authorAbbr, lowerlemma, sep="_")) %>%
+  arrange(authorAbbr, desc(count))
+```
+
+```{r}
+wc_byAuthorYear <- byAuthor %>%
+  group_by(year, authorAbbr, lowerlemma) %>%
+  summarise(count = n()) %>%
+  arrange(year, authorAbbr,desc(count))
+write.csv(wc_byAuthorYear, "wc_byAuthorYear.csv")
+```
+
+```{r}
+wc_byAuthorYear %>%
+  filter(authorAbbr %in% unique(leaderFaveWords$authorAbbr)) %>%
+  mutate(authorWord=paste(authorAbbr, lowerlemma, sep="_")) %>%
+  filter(authorWord %in% unique(leaderFaveWords$authorWord)) %>%
+  ggplot(aes(x=year, y=count, colour=lowerlemma)) +
+  geom_line(stat="identity") +
+  ggtitle("Trends in Leader's Most Popular Words") +
+  facet_wrap(~authorAbbr) +
+  guides(colour=FALSE)
+ggsave("graphs/leaderPopWords.png")
+```
+
+
