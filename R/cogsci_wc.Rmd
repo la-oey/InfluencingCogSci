@@ -18,9 +18,26 @@ library(knitr)
 knitr::opts_chunk$set(echo = TRUE)
 df <- read_csv("cogsci_abstracts.csv")
 df$abstract <- as.character(df$abstract)
-df$length <- str_count(df$abstract, pattern=" ")+1
-str(df)
 ```
+
+# Cleaning up Data Frame
+
+Adds vector of word counts per abstract.
+Glimpse at data frame "df" containing a row for each abstract.
+
+```{r}
+df$length <- str_count(df$abstract, pattern=" ")+1
+glimpse(df)
+```
+
+# New Data Frame with a Word for Each Row
+
+Removes punctuation and escape characters, "\\n", "\\t", "\\f".
+Creates exception for words containing punctuation, "e.g." & "i.e."
+Creates unique row for each word in abstract.
+Removes "words" that consist of an empty string.
+Creates vector of lower-case version of word.
+Writes to new data frame "words".
 
 ```{r}
 words <- df %>%
@@ -34,6 +51,9 @@ words <- df %>%
 ```
 
 # Unfiltered Word Frequency Across All Abstracts
+
+40 most frequent words in all abstracts.
+As predicted, has a Zipfian distribution.
 
 ```{r}
 words %>%
@@ -49,7 +69,15 @@ words %>%
 ggsave("graphs/rawWordCount.png")
 ```
 
-Gets Lemma & POS Info using CleanNLP; Removes Function Words (e.g. determiners, prepositions)
+# Including Lemma and Filter by Part-of-Speech (POS) Tagging
+
+Gets lemma & POS info using CleanNLP.
+Writes to new data frame "obj_token".
+Filters function words (e.g. determiners, prepositions).
+Writes to new filtered data frame "obj_token_cleaned".
+Joins data about lemma ("obj_token_cleaned") to original words ("words") dataframe.
+New data frame "words_full" which also has the function words filtered out.
+New vector with lower-cased lemma.
 
 ```{r}
 ## First time running, you need to run this to extract the lemma/POS info from CleanNLP
@@ -70,16 +98,15 @@ obj_token_cleaned <- obj_token %>%
   select("title","word","lemma")
   
 write.csv(obj_token_cleaned, "token_info_cleaned.csv")
-```
 
-Joined CogSci Data + CleanNLP File (added lemma information)
-
-```{r}
 words_full <- inner_join(words, unique(obj_token_cleaned), by=c("title","word")) %>%
   mutate(lowerlemma = tolower(lemma))
 ```
 
-Lemma Word Count
+# Content Lemma Word Count
+
+Count of content word lemmas.
+Visualization of 40 most frequent lemmas across all abstracts.
 
 ```{r}
 wc_overall <- words_full %>%
@@ -87,9 +114,7 @@ wc_overall <- words_full %>%
   summarise(count = n()) %>%
   arrange(desc(count))
 write.csv(wc_overall, "wc_overall.csv")
-```
 
-```{r}
 ggplot(head(wc_overall, 40), aes(x=reorder(lowerlemma,count), y=count)) +
   geom_bar(stat="identity") +
   ggtitle("Lemma Count") +
@@ -98,15 +123,19 @@ ggplot(head(wc_overall, 40), aes(x=reorder(lowerlemma,count), y=count)) +
 ggsave("graphs/overallPopWords.png")
 ```
 
+# Content Lemma Word Count by Year
+
+Count of content word lemmas by publication year.
+Visualization of 10 most frequent lemmas by year.
+Fairly consistent across years, mostly contains commonly used verbs (e.g. use, be, show), and words pertaining to the scientific procedure (e.g. participant, study, result, task, model).
+
 ```{r}
 wc_byYear <- words_full %>%
   group_by(year,lowerlemma) %>%
   summarise(count = n()) %>%
   arrange(year,desc(count))
 write.csv(wc_byYear, "wc_byYear.csv")
-```
 
-```{r}
 wc_byYear %>%
   group_by(year) %>%
   top_n(10,count) %>%
@@ -120,6 +149,10 @@ wc_byYear %>%
 ggsave("graphs/wordsByYear.png")
 ```
 
+# Content Lemma Word Count by Paper
+
+Count of content lemmas by paper.
+
 ```{r}
 wc_byTitle <- words_full %>%
   group_by(year,title,lowerlemma) %>%
@@ -128,6 +161,25 @@ wc_byTitle <- words_full %>%
 kable(head(wc_byTitle, 20))
 write.csv(wc_byTitle, "wc_byTitle.csv")
 ```
+
+# New Data Frame with an Author for Each Row
+
+Creates new row for each author in $authors vector.
+Replaces non-ASCII characters (e.g &uuml; to u); some authors had duplicate names with or without these characters.
+Removes final comma in authors list, created during data extraction.
+Fixes weird bug where some authors had additional institution information, due to weird formatting in HTML from which data was extracted.
+To do this, it removes any text appearing before "\\n" (fix gathered from glancing at the data and seeing this recurring issue).
+Fixes weird bug where there are some double white spaces.
+Fixes weird bug where numbers appear next to some names, probably indicative of a sub- or superscript in the print.
+Replaces "&" with ", ".
+Splits authors list by ", " into new rows, so a new row appears for each word corresponding to each author.
+Filters out remaining institutions still appearing among authors by removing authors with numbers in their name (indicative of an address) and using a few recurring key words that are unlikely to also be a persons name (e.g. University).
+Removes extra white space appearing before and after names.
+Creates new factor $authorAbbr tackling issue of authors with multiple names (e.g. names with or without middle initials, nicknames) by extracting last name and first character of first name (e.g. E Vul).
+This allows Ed Vul to publish as Edward Vul, Ed Vul, Eddy Vul, Eduardo Vul, E. Vul, Edward Scissorhands Vul, etc. and it will all be categorized as E Vul.
+Potential issue 1: Edgar Vul would also be categorized as E Vul, potentially leading to issues if Edward and Edgar Vul are indeed different humans.
+Potential issue 2: first name nicknames that differ in the first letter from the full first name appear as different humans when in fact they should be the same author, e.g. Elizabeth Bonawitz = E Bonawitz; Liz Bonawitz = L Bonawitz.
+Writes to new data frame "byAuthor".
 
 ```{r}
 byAuthor <- words_full %>%
@@ -140,20 +192,23 @@ byAuthor <- words_full %>%
   filter(!grepl("University|Institute|Center|Centre|Centro|School|Department|Dept|Unit|Hospital|\\d",
                 author)) %>%
   mutate(author=trimws(author),
-         authorWord = word(author, -1),
          authorAbbr = paste(substring(author,1,1), word(author, -1)))
+```
 
+# Content Lemma Word Count by Author
+
+Count of content lemmas by author.
+Visualization of 40 most words used by a single author, visualized as "Author: Lemma".
+
+```{r}
 wc_byAuthor <- byAuthor %>%
   group_by(authorAbbr, lowerlemma) %>%
   summarise(count = n()) %>%
   arrange(desc(count),authorAbbr)
 write.csv(wc_byAuthor, "wc_byAuthor.csv")
-```
 
-```{r}
 wc_byAuthor %>%
   mutate(authorLemma = paste(authorAbbr, lowerlemma, sep=": ")) %>%
-  arrange(desc(count),authorAbbr) %>%
   head(40) %>%
   ggplot(aes(x=reorder(authorLemma,count), y=count)) +
   geom_bar(stat="identity") +
@@ -162,6 +217,25 @@ wc_byAuthor %>%
   coord_flip()
 ggsave("graphs/AuthorWords.png")
 ```
+
+# Content Lemma Word Count by Author and Year
+
+Count of content lemmas by author and year.
+Allows for looking at trends in author word usage over time.
+
+```{r}
+wc_byAuthorYear <- byAuthor %>%
+  group_by(year, authorAbbr, lowerlemma) %>%
+  summarise(count = n()) %>%
+  arrange(year, authorAbbr,desc(count))
+write.csv(wc_byAuthorYear, "wc_byAuthorYear.csv")
+```
+
+# Leaders in the Field by Most Authored Papers by Year
+
+Counts number of papers published by each author each year.
+Selects the top 3 most publishing author for each year.
+Creates "leaders" data frame.
 
 ```{r}
 leaders <- byAuthor %>%
@@ -174,8 +248,13 @@ leaders %>% arrange(year,desc(totalPapers)) %>%
   kable(caption="Top 3 Authors w/ Most Papers by Year")
 ```
 
+# Authors with Most Words in Abstract by Year
+
+Counts total number of words in abstracts by each author each year.
+Selects the top 3 most verbose author for each year.
+Approximately corresponds to top 3 authors by number of papers published (i.e. authors who have more papers correspondingly have more words).
+
 ```{r}
-## Approximately corresponds to top 3 authors by number of papers published
 byAuthor %>%
   group_by(year, authorAbbr) %>%
   summarise(total = n()) %>%
@@ -183,6 +262,11 @@ byAuthor %>%
   arrange(year, desc(total)) %>%
   kable(caption="Top 3 Authors w/ Most Abstract Words by Year")
 ```
+
+# Favorite Words of Field Leaders and Trends
+
+Extracts the 5 most frequent words used by the leaders determined in the "leaders" data frame.
+Visualizes the frequency of word usages for each author over time.
 
 ```{r}
 leaderFaveWords <- byAuthor %>%
@@ -192,17 +276,7 @@ leaderFaveWords <- byAuthor %>%
   top_n(5, count) %>%
   mutate(authorWord = paste(authorAbbr, lowerlemma, sep="_")) %>%
   arrange(authorAbbr, desc(count))
-```
 
-```{r}
-wc_byAuthorYear <- byAuthor %>%
-  group_by(year, authorAbbr, lowerlemma) %>%
-  summarise(count = n()) %>%
-  arrange(year, authorAbbr,desc(count))
-write.csv(wc_byAuthorYear, "wc_byAuthorYear.csv")
-```
-
-```{r}
 wc_byAuthorYear %>%
   filter(authorAbbr %in% unique(leaderFaveWords$authorAbbr)) %>%
   mutate(authorWord=paste(authorAbbr, lowerlemma, sep="_")) %>%
