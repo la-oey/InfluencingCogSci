@@ -243,9 +243,9 @@ leaders <- byAuthor %>%
   unique() %>%
   group_by(year, authorAbbr) %>%
   summarise(totalPapers = n()) %>%
-  top_n(3, totalPapers)
+  top_n(2, totalPapers)
 leaders %>% arrange(year,desc(totalPapers)) %>%
-  kable(caption="Top 3 Authors w/ Most Papers by Year")
+  kable(caption="Top 2 Authors w/ Most Papers by Year")
 ```
 
 # Authors with Most Words in Abstract by Year
@@ -258,7 +258,7 @@ Approximately corresponds to top 3 authors by number of papers published (i.e. a
 byAuthor %>%
   group_by(year, authorAbbr) %>%
   summarise(total = n()) %>%
-  top_n(3, total) %>%
+  top_n(2, total) %>%
   arrange(year, desc(total)) %>%
   kable(caption="Top 3 Authors w/ Most Abstract Words by Year")
 ```
@@ -284,8 +284,7 @@ wc_byAuthorYear %>%
   ggplot(aes(x=year, y=count, colour=lowerlemma)) +
   geom_line(stat="identity") +
   ggtitle("Trends in Leader's Most Popular Words") +
-  facet_wrap(~authorAbbr) +
-  guides(colour=FALSE)
+  facet_wrap(~authorAbbr)
 ggsave("graphs/leaderPopWords.png")
 ```
 
