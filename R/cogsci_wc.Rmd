@@ -15,6 +15,9 @@ require(cleanNLP)
 require(udpipe)
 require(stringi)
 library(knitr)
+library(GGally)
+library(network)
+library(sna)
 knitr::opts_chunk$set(echo = TRUE)
 df <- read_csv("cogsci_abstracts.csv")
 df$abstract <- as.character(df$abstract)
@@ -83,11 +86,11 @@ New vector with lower-cased lemma.
 ## First time running, you need to run this to extract the lemma/POS info from CleanNLP
 ## This takes awhile, so it's better to save the CSV file and read in the file for future use
 
-cnlp_init_udpipe()
-obj <- cnlp_annotate(df$abstract, as_strings = TRUE, doc_ids=df$title)
-obj_token <- cnlp_get_token(obj)
-write.csv(obj_token, "token_info.csv")
-#obj_token <- read.csv("token_info.csv")
+#cnlp_init_udpipe()
+#obj <- cnlp_annotate(df$abstract, as_strings = TRUE, doc_ids=df$title)
+#obj_token <- cnlp_get_token(obj)
+#write.csv(obj_token, "token_info.csv")
+obj_token <- read.csv("token_info.csv")
 
 ## Filters out most POS, keeping nouns, verbs, adjectives, proper nouns, adverbs, numbers, 
 ## and INTJ, which is kind of a mix of multiple things
@@ -234,7 +237,7 @@ write.csv(wc_byAuthorYear, "wc_byAuthorYear.csv")
 # Leaders in the Field by Most Authored Papers by Year
 
 Counts number of papers published by each author each year.
-Selects the top 3 most publishing author for each year.
+Selects the top 2 most publishing author for each year.
 Creates "leaders" data frame.
 
 ```{r}
@@ -251,7 +254,7 @@ leaders %>% arrange(year,desc(totalPapers)) %>%
 # Authors with Most Words in Abstract by Year
 
 Counts total number of words in abstracts by each author each year.
-Selects the top 3 most verbose author for each year.
+Selects the top 2 most verbose author for each year.
 Approximately corresponds to top 3 authors by number of papers published (i.e. authors who have more papers correspondingly have more words).
 
 ```{r}
@@ -260,7 +263,7 @@ byAuthor %>%
   summarise(total = n()) %>%
   top_n(2, total) %>%
   arrange(year, desc(total)) %>%
-  kable(caption="Top 3 Authors w/ Most Abstract Words by Year")
+  kable(caption="Top 2 Authors w/ Most Abstract Words by Year")
 ```
 
 # Favorite Words of Field Leaders and Trends
@@ -287,5 +290,46 @@ wc_byAuthorYear %>%
   facet_wrap(~authorAbbr)
 ggsave("graphs/leaderPopWords.png")
 ```
+
+```{r}
+X <- .01 #top percent of authors we'll examine
+mostPublished <- byAuthor %>%
+  select("year", "title", "authorAbbr") %>%
+  unique() %>%
+  group_by(authorAbbr) %>%
+  summarise(papersCount = n()) %>%
+  top_n(ceiling(X*nrow(.)), papersCount) %>%
+  arrange(desc(papersCount))
+
+topXpercent <- nrow(mostPublished) #96 people in network
+
+authorPapers <- byAuthor %>%
+  select("year", "title", "authorAbbr") %>%
+  unique() %>%
+  filter(authorAbbr %in% mostPublished$authorAbbr)
+
+matrixArr = c()
+for(a in mostPublished$authorAbbr){
+  df.a <- authorPapers %>%
+    filter(authorAbbr == a)
+  for(b in mostPublished$authorAbbr){
+    df.b <- authorPapers %>%
+      filter(authorAbbr == b)
+    matrixArr <- c(matrixArr, length(intersect(df.a$title, df.b$title)))
+  }
+}
+
+matr <- matrix(matrixArr, nrow=topXpercent, dimnames = list(mostPublished$authorAbbr, mostPublished$authorAbbr))
+
+net <- network(matr, directed = FALSE)
+network.vertex.names(net) = mostPublished$authorAbbr
+
+ggnet2(net, node.size = 2, node.color="black")
+
+ggsave("graphs/network_top1percent.png")
+
+```
+
+
 
 
