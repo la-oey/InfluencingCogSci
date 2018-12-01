@@ -91,6 +91,7 @@ New vector with lower-cased lemma.
 #obj_token <- cnlp_get_token(obj)
 #write.csv(obj_token, "token_info.csv")
 obj_token <- read.csv("token_info.csv")
+View(obj_token)
 
 ## Filters out most POS, keeping nouns, verbs, adjectives, proper nouns, adverbs, numbers, 
 ## and INTJ, which is kind of a mix of multiple things
@@ -196,6 +197,19 @@ byAuthor <- words_full %>%
                 author)) %>%
   mutate(author=trimws(author),
          authorAbbr = paste(substring(author,1,1), word(author, -1)))
+
+byAuthor %>%
+  filter(grepl("Kim", author)) %>%
+  .$author %>%
+  unique()
+
+byAuthor %>%
+  mutate(lastname = word(author, -1)) %>%
+  group_by(lastname) %>%
+  select("author", "lastname") %>%
+  unique() %>%
+  summarise(counts = n()) %>%
+  arrange(desc(counts))
 ```
 
 # Content Lemma Word Count by Author
