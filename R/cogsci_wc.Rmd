@@ -86,10 +86,11 @@ New vector with lower-cased lemma.
 ## First time running, you need to run this to extract the lemma/POS info from CleanNLP
 ## This takes awhile, so it's better to save the CSV file and read in the file for future use
 
-#cnlp_init_udpipe()
-#obj <- cnlp_annotate(df$abstract, as_strings = TRUE, doc_ids=df$title)
-#obj_token <- cnlp_get_token(obj)
-#write.csv(obj_token, "token_info.csv")
+## Skip down below to read.csv("token_info_cleaned.csv") to avoid this slow code
+cnlp_init_udpipe()
+obj <- cnlp_annotate(df$abstract, as_strings = TRUE, doc_ids=df$title)
+obj_token <- cnlp_get_token(obj)
+write.csv(obj_token, "token_info.csv")
 obj_token <- read.csv("token_info.csv")
 View(obj_token)
 
@@ -103,7 +104,10 @@ obj_token_cleaned <- obj_token %>%
   
 write.csv(obj_token_cleaned, "token_info_cleaned.csv")
 
-words_full <- inner_join(words, unique(obj_token_cleaned), by=c("title","word")) %>%
+## Skip to here if token_info_cleaned.csv is up to date
+token_info_cleaned = read.csv("token_info_cleaned.csv")
+
+words_full <- inner_join(words, unique(token_info_cleaned), by=c("title","word")) %>%
   mutate(lowerlemma = tolower(lemma))
 ```
 
@@ -119,7 +123,8 @@ wc_overall <- words_full %>%
   arrange(desc(count))
 write.csv(wc_overall, "wc_overall.csv")
 
-ggplot(head(wc_overall, 40), aes(x=reorder(lowerlemma,count), y=count)) +
+wc_overall_read = read.csv("wc_overall.csv")
+ggplot(head(wc_overall_read, 40), aes(x=reorder(lowerlemma,count), y=count)) +
   geom_bar(stat="identity") +
   ggtitle("Lemma Count") +
   scale_x_discrete("Lemmas") +
@@ -140,7 +145,8 @@ wc_byYear <- words_full %>%
   arrange(year,desc(count))
 write.csv(wc_byYear, "wc_byYear.csv")
 
-wc_byYear %>%
+wc_byYear_read = read.csv("wc_byYear.csv")
+wc_byYear_read %>%
   group_by(year) %>%
   top_n(10,count) %>%
   ggplot(aes(x=reorder(lowerlemma,count), y=count)) +
