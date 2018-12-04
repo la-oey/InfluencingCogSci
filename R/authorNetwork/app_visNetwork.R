@@ -5,7 +5,7 @@ library(colorspace)
 library(igraph)
 
 ui <- fluidPage(
-  visNetworkOutput("author_network")
+  visNetworkOutput("author_network", height = "1500px")
   
 )
 
@@ -25,7 +25,7 @@ server<- function(input,output){
     
     edges = data.frame(edges)
 
-    visNetwork(nodes, edges, width = "100%")
+    visNetwork(nodes, edges, width = "150%")
     
   })
  
