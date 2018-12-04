@@ -5,7 +5,7 @@ library(colorspace)
 library(igraph)
 
 ui <- fluidPage(
-  visNetworkOutput("author_network", height = "1500px")
+  visNetworkOutput("author_network", height = "2000px")
   
 )
 
