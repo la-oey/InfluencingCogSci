@@ -1,11 +1,11 @@
 
-#Need to run lauren's script before running this one.
+#Need to run Lauren's script before running this one.
 
 #helper functions
 getEdges = function(x){
   from = c()
   to = c()
-  for(i in 1: length(x)){
+  for(i in 1:length(x)){
     for(j in 1:length(x)){
       if(i!=j && i>j){
         from=c(from, x[i])
@@ -18,42 +18,23 @@ getEdges = function(x){
 
 edgeList = function(author_net,uniqueEdges = T){
   edges = data.frame(from = c(),to =c())
-  
   for(k in unique(author_net$title)){
-    temp = author_net %>% filter(title == k) 
+    temp = author_net %>% filter(title == k)
     if(length(temp$authorAbbr) == 1){
       edges_itt = data.frame(from = temp$authorAbbr,to = temp$authorAbbr)
     }
     else{
       edges_itt = getEdges(temp$authorAbbr)
     }
-    
-    if(uniqueEdges && length(edges)!=0){
-      edges_itt = removeDuplicates(edges_itt,edges) #can add this line to get unique edges ignoring ordering of pair
-    }
     edges = rbind(edges,edges_itt)
+    print(paste0(which(unique(author_net$title) == k), ' out of ', length(unique(author_net$title))))
+  }
+  if(uniqueEdges && length(edges!=0)){
+    edges = edges[!duplicated(apply(edges,1,function(x) paste(sort(x),collapse=''))),]
   }
   return(edges)
 }
 
-#function that might be useful if we want unique edges
-removeDuplicates = function(x,y){
-  del = c()
-  for(j in 1:dim(y)[1]){
-    for(i in 1:dim(x)[1]){
-      if(x$from[i] == y$to[j] && x$to[i] == y$from[j]){
-        del = c(del, i)
-      }
-      if(x$from[i] == y$from[j] && x$to[i] == y$to[j]){
-        del = c(del, i)
-      }
-    }
-  }
-  if(length(del!=0)){
-    x = x[-del,]
-  }
-  return(x)
-} 
 
 ##Author network data
 #Some authors are not connected to the main part of the network. This happens when they have one publication/other reasons. This is bad for measuring certain kinds of centrality because they depend on paths and loops through the network. Taking the most published authors is expedient, but a more sophisticated means should be considered.  Additionally our graph is not simple because there are multiple connections between authors, if we select unique connections the network will be more amenable (including the removeDuplicates function in getEdges will do this). 
@@ -82,10 +63,10 @@ author_net %>%
 
 #visNetwork version of nodes and edges
 nodes = unique(author_net$authorAbbr) 
-edges = edgeList(author_net)
+edges = edgeList(author_net) #do not run this line with full author_net set it will take HOURS load csv 'all_edges.csv' instead
 
-write.csv(nodes, 'nodes.csv')
-write.csv(edges, 'edges.csv')
+write.csv(nodes, 'all_nodes.csv')
+write.csv(edges, 'all_edges.csv')
 
 
 #visNetwork interactive graph
@@ -98,8 +79,11 @@ nodes=data.frame(id = 1:length(nodes), label = nodes)
 edges = apply(edges, MARGIN = c(1,2), function(x){return(which(nodes[2] == x))})
 edges = data.frame(edges)
 
+write.csv(nodes, 'nodes_visNetwork.csv')
+write.csv(edges,'edges_visNetwork.csv')
+
 library(visNetwork)
-visNetwork(nodes, edges, width = "100%")
+#visNetwork(nodes, edges, width = "100%")
 
 
 
@@ -122,12 +106,14 @@ degree_centrality = centr_degree(graph)
 closeness_centrality = centr_clo(graph)
 betweenness_centrality = centr_betw(graph)
 
-centrality = data.frame(nodes = rep(nodes$id,3), 
+centrality = data.frame(id = rep(nodes$id,3), 
                         label = rep(nodes$label,3), 
                         measure = c(degree_centrality$res, closeness_centrality$res, betweenness_centrality$res), 
                         CM = c(rep('degree', length(nodes$id)), 
                                rep('close', length(nodes$id)), 
                                rep('between', length(nodes$id))))
+
+write.csv(centrality, 'all_centrality.csv')
 
 #Space I was using to explore centrality.
 
@@ -135,8 +121,13 @@ top5 = centrality %>%
   group_by(CM) %>% 
   arrange(desc(measure)) %>% 
   top_n(10,measure) %>% 
-  select(label,CM) %>% 
-  mutate(position = 1:10)# %>% ungroup()%>% spread(CM,label)
+  select(label,CM, measure) %>% 
+  mutate(position = 1:10) %>% ungroup()%>% spread(CM,label,-measure)
+
+library(gridExtra)
+library(grid)
+
+grid.table(top5)
 
 
 wide_centrality = centrality%>% spread(CM,measure)
