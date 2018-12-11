@@ -42,6 +42,7 @@ docs <- out$documents
 vocab <- out$vocab
 meta <-out$meta # null currently
 length(docs) # 7844 compare to 7871 from initial read.csv
+length(vocab)
 
 # TODO what kind of additional processing needs doing to sanity check the above? 
 # (e.g. seeing which docs were removed entirely)
@@ -52,7 +53,8 @@ length(docs) # 7844 compare to 7871 from initial read.csv
 
 # Try out a few checks for number of topics (note this takes some time to converge)
 # TODO try passing in add'l params to searchK to include prevalence and metadata
-topic.check = searchK(out$documents, out$vocab, K = c(5, 10, 20)) # add'l params for `prevalence` and `data` (metadata)
+# Note this can take a while to run (> 5 mins)
+topic.check = searchK(out$documents, out$vocab, K = c(5, 10, 20, 50, 100)) # add'l params for `prevalence` and `data` (metadata)
 topic.check$results # compare relevant metrics for 5 and 10 topics above
 
 # Try determining best fitting model with selectModel
@@ -84,8 +86,8 @@ abstract.model.manual <- stm(documents = out$documents,
 labelTopics(abstract.model) # this is neat, these seem relatively well-defined by top words
 
 # View the top n documents for each topic
-# TODO get this working
-topic.docs <- findThoughts(abstract.model, texts = as.character(out$documents), n = 3)
+# TODO get this working: how to figure out which abstracts were removed during processing
+topic.docs <- findThoughts(abstract.model, texts = df$abstract_cleaned, n = 3)
 
 
 ###########################
