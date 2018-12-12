@@ -1,25 +1,39 @@
 library(dplyr)
 library(readr)
 library(stringr)
+setwd("/Users/loey/Desktop/CourseWork/UCSD-Year-1/PSYC201AB/201A/Project/InfluencingCogSci/")
 file1 <- read_csv("cogsci_abstracts2000_2013.csv")
 file2 <- read_csv("cogsci_abstracts2013-2014.csv")
 file3 <- read_csv("cogsci_abstracts2015-2018.csv")
 fileOrig <- read_csv("cogsci_abstracts.csv")
 
-#Extracts abstract
-str_extract(testFiles$full_text, "Abstract(.*?)Keywords")
-gsub(".*Abstract*|Keywords.*", "", testFiles$full_text)
-regmatches(testFiles$full_text,regexec("Abstract(.*?)Keywords",testFiles$full_text))[[1]][2]
-grepl("Keywords", testFiles$full_text)
-#Extracts keywords
-regmatches(testFiles$full_text,regexec("Keywords(.*?)Introduction",testFiles$full_text))[[1]][2]
 
 attachOrigAbstracts <- fileOrig %>%
   filter(year %in% 2009:2014) %>%
   select(html_link,abstract)
 
-allFiles <- bind_rows(file1, file2, file3)
+duplicates <- bind_rows(file1,file2) %>%
+  group_by(year, title) %>%
+  summarise(count = n()) %>%
+  filter(count > 1) %>%
+  .$title
+
+file2_2013 <- file2 %>%
+  filter(year == 2013 & !title %in% duplicates)
+file2_not2013 <- file2 %>%
+  filter(year != 2013)
+
+files12 <- bind_rows(file1, file2_2013, file2_not2013)
+nrow(files12)
+  
+
+allFiles <- bind_rows(files12, file3)
 nrow(allFiles)
+
+allFiles %>%
+  group_by(year, title) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
 
 files2009.2014 <- allFiles %>%
   filter(year %in% 2009:2014) %>%
