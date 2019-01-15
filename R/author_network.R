@@ -40,7 +40,7 @@ edgeList = function(author_net,uniqueEdges = T){
 #Some authors are not connected to the main part of the network. This happens when they have one publication/other reasons. This is bad for measuring certain kinds of centrality because they depend on paths and loops through the network. Taking the most published authors is expedient, but a more sophisticated means should be considered.  Additionally our graph is not simple because there are multiple connections between authors, if we select unique connections the network will be more amenable (including the removeDuplicates function in getEdges will do this). 
 
 #includes all authors
-author_net = byAuthor %>% select(title,authorAbbr) %>% unique()
+author_net = byAuthor %>% select(title,authorAbbr,year) %>% unique()
 
 #removes authors with <n publications
 n.pubs=10
@@ -62,11 +62,46 @@ author_net %>%
 #Creating an edge list to be used with igraph (for calculating centrality) and visNetwork (fun visualization compatable with shiny for writing interactive app).
 
 #visNetwork version of nodes and edges
-nodes = unique(author_net$authorAbbr) 
-edges = edgeList(author_net) #do not run this line with full author_net set it will take HOURS load csv 'all_edges.csv' instead
+all_nodes = unique(author_net$authorAbbr) 
+all_edges = edgeList(author_net%>%select(title,authorAbbr)) #do not run this line with full author_net set it will take HOURS load csv 'all_edges.csv' instead
 
-write.csv(nodes, 'all_nodes.csv')
-write.csv(edges, 'all_edges.csv')
+library(igraph)
+
+for(j in unique(author_net$year)){
+  author_net_year = author_net %>% filter(year == j) %>% select(title, authorAbbr)
+  year_nodes= unique(author_net_year$authorAbbr)
+  year_edges = edgeList(author_net_year)
+  
+  year_nodes=data.frame(id = 1:length(year_nodes), label = year_nodes)
+  
+  year_edges = apply(year_edges, MARGIN = c(1,2), function(x){return(which(year_nodes[2] == x))})
+  year_edges = data.frame(year_edges)
+  
+  graph_edges = c()
+  
+  for(i in 1:dim(year_edges)[1]){
+    graph_edges = c(graph_edges, year_edges[i,])
+  }
+  graph_edges = as.numeric(graph_edges)
+  graph = make_graph(graph_edges, directed = FALSE)
+  
+  
+  #We can certainly use degree centrality, but need to carefully consider other measures because of the weird structure of the graph. igraph has other useful network analysis functions that might help us systematically trim the graph to a simple and fully connected one.
+  #centrality (degree, close, between)
+  degree_centrality = centr_degree(graph)
+  closeness_centrality = centr_clo(graph)
+  betweenness_centrality = centr_betw(graph)
+  
+  centrality = data.frame(id = rep(year_nodes$id,3), 
+                          label = rep(year_nodes$label,3), 
+                          measure = c(degree_centrality$res, closeness_centrality$res, betweenness_centrality$res), 
+                          CM = c(rep('degree', length(year_nodes$id)), 
+                                 rep('close', length(year_nodes$id)), 
+                                 rep('between', length(year_nodes$id))))
+  
+  write.csv(centrality, paste0('years/centrality_',j,'.csv'))
+  
+}
 
 
 #visNetwork interactive graph
@@ -74,17 +109,10 @@ write.csv(edges, 'all_edges.csv')
 #For example can add entry of author and have the app focus on that node. 
 #Can also add coloring to the graph based on centrality measures. 
 
-nodes=data.frame(id = 1:length(nodes), label = nodes)
+all_nodes=data.frame(id = 1:length(all_nodes), label = all_nodes)
 
-edges = apply(edges, MARGIN = c(1,2), function(x){return(which(nodes[2] == x))})
-edges = data.frame(edges)
-
-write.csv(nodes, 'nodes_visNetwork.csv')
-write.csv(edges,'edges_visNetwork.csv')
-
-library(visNetwork)
-#visNetwork(nodes, edges, width = "100%")
-
+all_edges = apply(all_edges, MARGIN = c(1,2), function(x){return(which(all_nodes[2] == x))})
+all_edges = data.frame(all_edges)
 
 
 #igraph
@@ -93,8 +121,8 @@ library(visNetwork)
 library(igraph)
 graph_edges = c()
 
-for(i in 1:dim(edges)[1]){
-  graph_edges = c(graph_edges, edges[i,])
+for(i in 1:dim(all_edges)[1]){
+  graph_edges = c(graph_edges, all_edges[i,])
 }
 graph_edges = as.numeric(graph_edges)
 graph = make_graph(graph_edges, directed = FALSE)
@@ -106,14 +134,14 @@ degree_centrality = centr_degree(graph)
 closeness_centrality = centr_clo(graph)
 betweenness_centrality = centr_betw(graph)
 
-centrality = data.frame(id = rep(nodes$id,3), 
-                        label = rep(nodes$label,3), 
+all_centrality = data.frame(id = rep(all_nodes$id,3), 
+                        label = rep(all_nodes$label,3), 
                         measure = c(degree_centrality$res, closeness_centrality$res, betweenness_centrality$res), 
-                        CM = c(rep('degree', length(nodes$id)), 
-                               rep('close', length(nodes$id)), 
-                               rep('between', length(nodes$id))))
+                        CM = c(rep('degree', length(all_nodes$id)), 
+                               rep('close', length(all_nodes$id)), 
+                               rep('between', length(all_nodes$id))))
 
-write.csv(centrality, 'all_centrality.csv')
+write.csv(all_centrality, 'all_centrality.csv')
 
 #Space I was using to explore centrality.
 
