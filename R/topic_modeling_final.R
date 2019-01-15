@@ -46,6 +46,12 @@ structure_text <- function(documents, metadata = NA) {
   return(out)
 }
 
+get_removed_docs <- function(documents) {
+  processed <- textProcessor(documents)
+  removed = processed$docs.removed
+  return(removed)
+}
+
 
 #####################
 ### DATA MODELING ###
@@ -101,16 +107,54 @@ labelTopics(abstract.model.manual)
 df.fulltext <- read_csv(DATA)
 #  TODO why does metadata not work?
 fulltext.model.framework <- structure_text(df.fulltext$full_text) # takes up to 20 mins.
-# Fit model
+# Fit model: can take 20+ mins. for 50 topics or more
 fulltext.model.manual <- stm(documents = fulltext.model.framework$documents, 
                              vocab = fulltext.model.framework$vocab,
                              K = 50,
                              max.em.its = 100,
-                             init.type = "Spectral") # Takes up to 10 mins.
+                             init.type = "Spectral") # note can also use "LDA" here for Gibbs sampler instead of variational inference
 
 # k = 10 converges after 33 iterations
 # k = 25 converges after 76 iterations
 # k = 50 converges after 81 iterations
+
+
+# Model fulltext from individual years
+sample.year = '2017'
+papers.sample.year <- df.fulltext %>%
+  filter(year == sample.year)
+removed.docs.sample.year = get_removed_docs(papers.sample.year$full_text)
+docs.sample.year.cleaned = papers.sample.year[-removed.docs.sample.year,]
+
+fulltext.model.framework.sample.year <- structure_text(papers.sample.year$full_text)
+# Summary of fulltext.model.framework.2017:
+# 885 documents, 4110 terms and 365292 tokens
+fulltext.model.manual.sample.year <- stm(documents = fulltext.model.framework.sample.year$documents, 
+                             vocab = fulltext.model.framework.sample.year$vocab,
+                             K = 20, # converges after 82 iters for k = 20, very fast
+                             max.em.its = 100,
+                             init.type = "Spectral")
+# validation
+summary(fulltext.model.manual.sample.year)  # looks pretty good
+
+# analysis
+topic.dist = fulltext.model.manual.sample.year$theta
+dim(topic.dist) ;topic.dist[1,]
+
+df.papers = data.frame(title = docs.sample.year.cleaned$title,
+                           authors = docs.sample.year.cleaned$authors,
+                           year = docs.sample.year.cleaned$year)
+
+df.topic.dist = cbind(df.papers, topic.dist) 
+
+# Write to csv for processing elsewhere
+write_csv(df.topic.dist, 'topic_dist_year.csv')
+
+
+
+#####################
+### VISUALIZATION ###
+#####################
 
 # Validate model
 labelTopics(fulltext.model.manual)
@@ -121,4 +165,25 @@ cloud(stmobj = fulltext.model.manual,
       type = "model",
       max.words = 25) # word cloud of most probable 25 words in topic 1
 
+
+#####################
+### ANALYSIS      ###
+#####################
+
+summary.STM(fulltext.model.manual)
+
+topic.dist = fulltext.model.manual$theta # Number of Documents by Number of Topics matrix of topic proportions.
+
+# TODO reformat this to include title, author, and year of each document
+
+# TODO write reformatted matrix to csv for use by companion functions
+
+# TODO write companion functions for:
+# calculating mean topic distribution over all docs
+# compare topic dist for a particular doc to mean dist over all docs (should return vector of coefficients for global topic weight / doc topic weight?)
+
+# TODO parse these out by year? ...
+papers.2017 <- df.fulltext %>%
+  filter(year == '2017')
+fulltext.model.framework.2017 <- structure_text(papers.2017$full_text)
 
