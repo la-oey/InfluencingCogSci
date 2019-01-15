@@ -1,4 +1,4 @@
 *.DS_Store
 *.RData
-*.RHistory
+*.Rhistory
 cogsci_papers.csv
