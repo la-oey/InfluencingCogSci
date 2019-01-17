@@ -25,7 +25,8 @@ DATA_YEAR = 'topic_dist_year.csv'
 DATA_50 = 'topic_dist_fulltext_50.csv'
 DATA_100 = 'topic_dist_fulltext_100.csv'
 
-topic.df = read_csv(DATA_50)
+# topic.df = read_csv(DATA_50)
+topic.df = read_csv(DATA_100)
 glimpse(topic.df)
 
 global.means = get_avg_topic_dist(topic.df)

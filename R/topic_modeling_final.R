@@ -105,21 +105,23 @@ labelTopics(abstract.model.manual)
 
 # Model full text
 df.fulltext <- read_csv(DATA)
-topics = 50
+topics = 100
 
-#  TODO why does metadata not work?
-# fulltext.model.framework <- structure_text(df.fulltext$full_text) # takes up to 20 mins.
 
 processed <- textProcessor(df.fulltext$full_text)
-removed <- processed$docs.removed
 
+# Catch and release papers removed during textProcessor
+removed <- processed$docs.removed
 fulltext.papers.cleaned = df.fulltext[-removed,]
 dim(df.fulltext)
 dim(fulltext.papers.cleaned)
 
 fulltext.model.framework <- prepDocuments(processed$documents, processed$vocab, processed$meta, lower.thresh = 10)
+
+# Catch and release second round of papers removed during prepDocuments
 removed.model = fulltext.model.framework$docs.removed
 fulltext.papers.cleaned.model = fulltext.papers.cleaned[-removed.model,]
+dim(fulltext.papers.cleaned.model)
 
 # Fit model: can take 20+ mins. for 50 topics or more
 fulltext.model.manual <- stm(documents = fulltext.model.framework$documents, 
@@ -131,6 +133,7 @@ fulltext.model.manual <- stm(documents = fulltext.model.framework$documents,
 # k = 10 converges after 33 iterations
 # k = 25 converges after 76 iterations
 # k = 50 converges after 81 iterations
+# k = 100 converges after 78 iterations but take multiple hours
 summary(fulltext.model.manual)
 
 topic.dist = fulltext.model.manual$theta
@@ -146,8 +149,8 @@ df.topic.dist = cbind(df.papers, topic.dist)
 # Write to csv for processing elsewhere
 csv.title.50 = 'topic_dist_fulltext_50.csv'
 csv.title.100 = 'topic_dist_fulltext_100.csv'
-write_csv(df.topic.dist, csv.title.50)
-# write_csv(df.topic.dist, csv.title.100)
+# write_csv(df.topic.dist, csv.title.50)
+write_csv(df.topic.dist, csv.title.100)
 
 # test csv writing
 csv.test = read_csv(csv.title.50)
