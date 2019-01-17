@@ -9,22 +9,34 @@ get_avg_topic_dist <- function(df) {
   topic.means = as.data.frame(topic.means)
 }
 
-# returns a vector X with multipliers [x1, ..., xn] for a given paper
-# s.t. the paper's topic dist * X = global topic distribution over all papers
+# returns a vector X with differences [x1, ..., xn] for a given paper
+# s.t. the paper's topic dist + X = global topic distribution over all papers
 get_paper_global_comparison <- function(sample.paper.topics, global.topic.dist) {
   paper.topic.dist = sample.paper.topics %>%
     select(-title, -authors, -year) %>%
-    gather(topic, topicMean, `1`:`20`)
-  return(data.frame(topicMult = global.topic.dist$topic.means / paper.topic.dist$topicMean))
+    gather(topic, topicMean, `1`:`50`) # NB: this upper range needs to be set every time
+  return(data.frame(topicDiff = global.topic.dist$topic.means - paper.topic.dist$topicMean))
 }
 
 
 
 
-DATA = 'topic_dist_year.csv'
-topic.df = read_csv(DATA)
+DATA_YEAR = 'topic_dist_year.csv'
+DATA_50 = 'topic_dist_fulltext_50.csv'
+DATA_100 = 'topic_dist_fulltext_100.csv'
+
+topic.df = read_csv(DATA_50)
+glimpse(topic.df)
 
 global.means = get_avg_topic_dist(topic.df)
 
+# Compare to one paper
 sample.paper.topics = topic.df[1,]
-sample.paper.multiplier = get_paper_global_comparison(sample.paper.topics, global.means)
+sample.paper.difference.vector = get_paper_global_comparison(sample.paper.topics, global.means)
+
+# TODO similar comparisons for all papers with a particular author, all papers for a particular year (minus those from an author)
+
+
+
+
+

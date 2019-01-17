@@ -105,18 +105,54 @@ labelTopics(abstract.model.manual)
 
 # Model full text
 df.fulltext <- read_csv(DATA)
+topics = 50
+
 #  TODO why does metadata not work?
-fulltext.model.framework <- structure_text(df.fulltext$full_text) # takes up to 20 mins.
+# fulltext.model.framework <- structure_text(df.fulltext$full_text) # takes up to 20 mins.
+
+processed <- textProcessor(df.fulltext$full_text)
+removed <- processed$docs.removed
+
+fulltext.papers.cleaned = df.fulltext[-removed,]
+dim(df.fulltext)
+dim(fulltext.papers.cleaned)
+
+fulltext.model.framework <- prepDocuments(processed$documents, processed$vocab, processed$meta, lower.thresh = 10)
+removed.model = fulltext.model.framework$docs.removed
+fulltext.papers.cleaned.model = fulltext.papers.cleaned[-removed.model,]
+
 # Fit model: can take 20+ mins. for 50 topics or more
 fulltext.model.manual <- stm(documents = fulltext.model.framework$documents, 
                              vocab = fulltext.model.framework$vocab,
-                             K = 50,
+                             K = topics,
                              max.em.its = 100,
                              init.type = "Spectral") # note can also use "LDA" here for Gibbs sampler instead of variational inference
 
 # k = 10 converges after 33 iterations
 # k = 25 converges after 76 iterations
 # k = 50 converges after 81 iterations
+summary(fulltext.model.manual)
+
+topic.dist = fulltext.model.manual$theta
+dim(topic.dist)
+topic.dist[1,]
+
+df.papers = data.frame(title = fulltext.papers.cleaned.model$title,
+                       authors = fulltext.papers.cleaned.model$authors,
+                       year = fulltext.papers.cleaned.model$year)
+
+df.topic.dist = cbind(df.papers, topic.dist)
+
+# Write to csv for processing elsewhere
+csv.title.50 = 'topic_dist_fulltext_50.csv'
+csv.title.100 = 'topic_dist_fulltext_100.csv'
+write_csv(df.topic.dist, csv.title.50)
+# write_csv(df.topic.dist, csv.title.100)
+
+# test csv writing
+csv.test = read_csv(csv.title.50)
+glimpse(csv.test)
+
 
 
 # Model fulltext from individual years
