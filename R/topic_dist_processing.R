@@ -19,6 +19,17 @@ get_paper_global_comparison <- function(sample.paper.topics, global.topic.dist) 
 }
 
 
+get_author_rows <- function(author.lookup, df) {
+  author.grep = grep(author.lookup, df$authors, value = TRUE)
+  author.rows = df %>%
+    filter(authors %in% author.grep)
+  all.other.rows = anti_join(df, author.rows, by = c('authors'))
+  sanity.check = dim(author.rows)[1] + dim(all.other.rows)[1] == dim(df)[1]
+  print(paste("Sanity check for author extraction passed: ", sanity.check, sep = " "))
+  return(list(author = author.rows, global = all.other.rows))
+}
+
+
 
 
 DATA_YEAR = 'topic_dist_year.csv'
@@ -35,9 +46,8 @@ global.means = get_avg_topic_dist(topic.df)
 sample.paper.topics = topic.df[1,]
 sample.paper.difference.vector = get_paper_global_comparison(sample.paper.topics, global.means)
 
-# TODO similar comparisons for all papers with a particular author, all papers for a particular year (minus those from an author)
-
-
-
-
+# Select an author's papers, all papers minus that author
+tenenbaum.comparison = get_author_rows('Tenenbaum', topic.df)
+tenenbaum = tenenbaum.comparison$author
+all.minus.tenenbaum = tenenbaum.comparison$global
 
