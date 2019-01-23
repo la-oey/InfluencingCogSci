@@ -52,9 +52,21 @@ tenenbaum.comparison = get_author_rows('Tenenbaum', topic.df)
 tenenbaum = tenenbaum.comparison$author
 all.minus.tenenbaum = tenenbaum.comparison$global
 
+get_author_rows('Michael', topic.df)
+
 
 #getting top 5 authors
 author_net = getAuthorList(topic.df)
 
-
+author_net %>%
+  group_by(authorAbbr) %>%
+  summarise(n = n()) %>%
+  mutate(prop = n/sum(n),
+         rank = dense_rank(desc(n))) %>%
+  arrange(desc(prop)) %>%
+  mutate(cumsum = cumsum(prop)) %>%
+  filter(cumsum < .05) %>%
+  ggplot(aes(x=reorder(authorAbbr, rank), y=prop)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
