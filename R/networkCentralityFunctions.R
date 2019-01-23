@@ -95,7 +95,22 @@ centralityQuantile = function(dat, q = c(.95,1), cent='degree'){
 }
 
 getAuthorList = function(df){
-  df %>% select(title,authors,year)%>%  
+  editAuthors <- function(origAuthors){
+    temp <- matrix(strsplit(origAuthors, ",")[[1]], , 2, byrow=TRUE)
+    author <- paste(trimws(temp[,2]), trimws(temp[,1]), sep=" ")
+    return(author)
+  }
+  
+  byAuthor1 <- df%>%
+    filter(year <= 2014) %>%
+    select(title,authors,year)%>%  
+    mutate(author = mapply(editAuthors, authors)) %>%
+    unnest(author) %>%
+    mutate(authorAbbr = paste(substring(author,1,1), word(author, -1)))
+  
+  byAuthor2 <- df %>%
+    filter(year > 2014) %>%
+    select(title,authors,year)%>%  
     mutate(authors=stri_trans_general(authors, "latin-ascii"),
            author=str_replace_all(authors, ",$", ""),
            author=str_replace_all(author, c(".*\n"="", " *\\(.*?\\)"="", "  "=" ")),
@@ -107,4 +122,6 @@ getAuthorList = function(df){
     mutate(author=trimws(author),
            authorAbbr = paste(substring(author,1,1), word(author, -1))) %>%
     select(title,authorAbbr,year)
+  
+  bind_rows(byAuthor1, byAuthor2)
 }
