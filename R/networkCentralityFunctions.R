@@ -1,3 +1,9 @@
+require(cleanNLP)
+require(udpipe)
+require(stringi)
+library(knitr)
+
+
 getEdges = function(x){
   from = c()
   to = c()
@@ -86,4 +92,19 @@ centralityQuantile = function(dat, q = c(.95,1), cent='degree'){
     mutate(index = 1:nAuthors, pct = (1 - index/nAuthors)) %>%
     filter(q1<=pct, pct<q2)%>%
     select(label,CM, measure,pct) 
+}
+
+getAuthorList = function(df){
+  df %>% select(title,authors,year)%>%  
+    mutate(authors=stri_trans_general(authors, "latin-ascii"),
+           author=str_replace_all(authors, ",$", ""),
+           author=str_replace_all(author, c(".*\n"="", " *\\(.*?\\)"="", "  "=" ")),
+           author=str_replace_all(author, " & ", ", "),
+           author=strsplit(author, ", ")) %>%
+    unnest(author) %>%
+    filter(!grepl("University|Institute|Center|Centre|Centro|School|Department|Dept|Unit|Hospital|\\d",
+                  author)) %>%
+    mutate(author=trimws(author),
+           authorAbbr = paste(substring(author,1,1), word(author, -1))) %>%
+    select(title,authorAbbr,year)
 }

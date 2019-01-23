@@ -1,5 +1,6 @@
 ### Script / functions for processing topic distributions over a set of papers
-
+library(tidyverse)
+source('networkCentralityFunctions.R')
 
 # get mean topic distribution for a set of documents
 get_avg_topic_dist <- function(df) {
@@ -50,4 +51,10 @@ sample.paper.difference.vector = get_paper_global_comparison(sample.paper.topics
 tenenbaum.comparison = get_author_rows('Tenenbaum', topic.df)
 tenenbaum = tenenbaum.comparison$author
 all.minus.tenenbaum = tenenbaum.comparison$global
+
+
+#getting top 5 authors
+author_net = getAuthorList(topic.df)
+
+
 
