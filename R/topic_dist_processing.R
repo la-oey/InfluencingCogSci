@@ -8,6 +8,7 @@ get_avg_topic_dist <- function(df) {
     select(-title, -authors, -year) %>%
     colMeans()
   topic.means = as.data.frame(topic.means)
+  return(topic.means)
 }
 
 # returns a vector X with differences [x1, ..., xn] for a given paper
@@ -21,7 +22,7 @@ get_paper_global_comparison <- function(sample.paper.topics, global.topic.dist) 
 
 
 get_author_rows <- function(author.lookup, df) {
-  author.grep = grep(author.lookup, df$authors, value = TRUE)
+  author.grep = as.vector(unlist(sapply(author.lookup, function(author.lookup){return(grep(author.lookup, df$authors, value = TRUE))})))
   author.rows = df %>%
     filter(authors %in% author.grep)
   all.other.rows = anti_join(df, author.rows, by = c('authors'))
@@ -48,11 +49,51 @@ sample.paper.topics = topic.df[1,]
 sample.paper.difference.vector = get_paper_global_comparison(sample.paper.topics, global.means)
 
 # Select an author's papers, all papers minus that author
-tenenbaum.comparison = get_author_rows('Tenenbaum', topic.df)
+tenenbaum.comparison = get_author_rows(c('Tenenbaum','Griffiths'), topic.df)
 tenenbaum = tenenbaum.comparison$author
 all.minus.tenenbaum = tenenbaum.comparison$global
 
+
 get_author_rows('Michael', topic.df)
+
+#plotting author topic dist by year
+
+authorTopicDistByYear = function(thisAuthor, topic.df, ntopics){
+  year_topics  = matrix(nrow = ntopics,ncol = length(unique(topic.df$year)) )
+  for(i in 1:length(unique(topic.df$year))){
+    comparison = topic.df %>% filter(year == unique(topic.df$year)[i]) %>% 
+      get_author_rows(thisAuthor, .)
+    year_topics[,i] = t(get_avg_topic_dist(comparison$author))  
+  }
+  year_topics = data.frame(year_topics)
+  names(year_topics) = unique(topic.df$year)
+  year_topics = year_topics %>% mutate(topic = factor(1:ntopics)) %>% gather( key = year, value = prob, -topic)
+  return(year_topics)
+}
+
+thisAuthor = c('Tenenbaum', 'Griffiths')
+
+topic.df %>% authorTopicDistByYear(thisAuthor,.,100) %>%
+  ggplot(aes(x=year,y=prob,group = topic))+
+  geom_smooth(se=F, aes(col = topic),size = .5, alpha = .5)
+
+
+#plotting global topic dist by year
+globalTopicDistByYear = function(topic.df,ntopics){
+  year_topics  = matrix(nrow = ntopics,ncol = length(unique(topic.df$year)) )
+  for(i in 1:length(unique(topic.df$year))){
+    comparison = topic.df %>% filter(year == unique(topic.df$year)[i])
+    year_topics[,i] = t(get_avg_topic_dist(comparison))  
+  }
+  year_topics = data.frame(year_topics)
+  names(year_topics) = unique(topic.df$year)
+  year_topics = year_topics %>% mutate(topic = factor(1:ntopics)) %>% gather( key = year, value = prob, -topic)
+  return(year_topics)
+}
+
+topic.df %>% globalTopicDistByYear(.,100) %>%
+  ggplot(aes(x=year,y=prob,group = topic))+
+  geom_smooth(se=F, aes(col = topic), size = .5, alpha = .5)
 
 
 #getting top 5 authors
@@ -69,4 +110,27 @@ author_net %>%
   ggplot(aes(x=reorder(authorAbbr, rank), y=prop)) +
   geom_point() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#getting top 5 authors by centrality
+
+centrality = writeAuthorNet(author_net)
+
+num_papers = author_net %>%
+  group_by(authorAbbr) %>%
+  summarise(n = n()) %>%
+  mutate(prop = n/sum(n),
+         rank = dense_rank(desc(n)))
+
+centrality %>% 
+  filter(CM == 'degree') %>% 
+  inner_join(num_papers,., by = c('authorAbbr' = 'label')) %>%
+  mutate(normalized_measure = measure/n) %>%
+  arrange(desc(measure)) %>%
+  select(-id,-CM) %>%
+  gather(key = quantity, value = value, -authorAbbr,-rank)%>%
+  ggplot(aes(x=reorder(factor(authorAbbr),rank),y=value))+
+    geom_point(size=.1)+
+    facet_wrap(~quantity)
+
+
 
