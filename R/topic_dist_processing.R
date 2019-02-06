@@ -53,7 +53,6 @@ tenenbaum.comparison = get_author_rows(c('Tenenbaum','Griffiths'), topic.df)
 tenenbaum = tenenbaum.comparison$author
 all.minus.tenenbaum = tenenbaum.comparison$global
 
-
 get_author_rows('Michael', topic.df)
 
 #plotting author topic dist by year
@@ -133,4 +132,12 @@ centrality %>%
     facet_wrap(~quantity)
 
 
+data.final = data.frame()
+for (year in levels(as.factor(tenenbaum$year))) {
+  data = tenenbaum[tenenbaum$year == year,]
+  avg.year = get_avg_topic_dist(data)
+  # glimpse(avg.year)
+  rbind(data.final, avg.year)
+}
+glimpse(data.final)
 
