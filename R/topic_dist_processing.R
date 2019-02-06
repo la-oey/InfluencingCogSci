@@ -38,7 +38,7 @@ DATA_YEAR = 'topic_dist_year.csv'
 DATA_50 = 'topic_dist_fulltext_50.csv'
 DATA_100 = 'topic_dist_fulltext_100.csv'
 
-# topic.df = read_csv(DATA_50)
+topic.df = read_csv(DATA_50)
 topic.df = read_csv(DATA_100)
 glimpse(topic.df)
 
@@ -72,7 +72,7 @@ authorTopicDistByYear = function(thisAuthor, topic.df, ntopics){
 
 thisAuthor = c('Tenenbaum', 'Griffiths')
 
-topic.df %>% authorTopicDistByYear(thisAuthor,.,100) %>%
+topic.df %>% authorTopicDistByYear(thisAuthor,.,50) %>%
   ggplot(aes(x=year,y=prob,group = topic))+
   geom_smooth(se=F, aes(col = topic),size = .5, alpha = .5)
 
@@ -90,7 +90,7 @@ globalTopicDistByYear = function(topic.df,ntopics){
   return(year_topics)
 }
 
-topic.df %>% globalTopicDistByYear(.,100) %>%
+topic.df %>% globalTopicDistByYear(.,50) %>%
   ggplot(aes(x=year,y=prob,group = topic))+
   geom_smooth(se=F, aes(col = topic), size = .5, alpha = .5)
 
@@ -122,7 +122,7 @@ num_papers = author_net %>%
 
 centrality %>% 
   filter(CM == 'degree') %>% 
-  inner_join(num_papers,., by = c('authorAbbr' = 'label')) %>%
+  inner_join(num_papers, ., by = c('authorAbbr' = 'label')) %>%
   mutate(normalized_measure = measure/n) %>%
   arrange(desc(measure)) %>%
   select(-id,-CM) %>%
@@ -140,4 +140,62 @@ for (year in levels(as.factor(tenenbaum$year))) {
   rbind(data.final, avg.year)
 }
 glimpse(data.final)
+
+
+
+##############################
+### EXPERIMENTING WITH DVs ###
+##############################
+thisAuthor = c('Tenenbaum')
+
+get_projection_angle = function(vec.a, vec.b) {
+  # get projection angles
+  theta = acos( sum(vec.a * vec.b) / ( sqrt(sum(vec.a * vec.a)) * sqrt(sum(vec.b * vec.b)) ) )
+  return(theta)
+}
+
+
+global_topic = topic.df %>% 
+  globalTopicDistByYear(., 50) %>% # long format with topic, year, probability
+  group_by(topic) %>% 
+  mutate(diff = lead(prob) - prob) # subtract previous year's value from each value (NA when no value)
+
+
+tb_topic = topic.df %>% 
+  authorTopicDistByYear(thisAuthor, ., 50) %>% 
+  group_by(topic) %>% 
+  mutate(diff = lead(prob) - prob)
+
+gr_topic = topic.df %>% 
+  authorTopicDistByYear(c('Griffiths'), ., 50) %>% 
+  group_by(topic) %>% 
+  mutate(diff = lead(prob) - prob)
+
+# get the vector we project onto
+combined_vec = cbind(global_topic, gr_topic) ;glimpse(combined_vec)
+combined_vec = combined_vec %>%
+  mutate(target_vec = prob - prob1)
+
+# clean up
+glimpse(combined_vec)
+combined_vec = combined_vec %>%
+  filter(!is.na(diff) & !is.nan(diff1) & !is.nan(target_vec))
+
+
+projection_angles = combined_vec %>%
+  group_by(year) %>%
+  summarize(proj_angle_gr = get_projection_angle(diff1, target_vec),
+            proj_angle_gl = get_projection_angle(diff, target_vec))
+
+
+glimpse(projection_angles)
+projection_angles %>%
+  ggplot(aes(x = year)) +
+  geom_point(aes(y = proj_angle_gr), color = "blue") +
+  geom_point(aes(y = proj_angle_gl), color = "red") +
+  ylim(1.2, 2.2)
+
+
+
+
 
