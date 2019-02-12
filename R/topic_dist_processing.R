@@ -70,7 +70,7 @@ authorTopicDistByYear = function(thisAuthor, topic.df, ntopics){
   return(year_topics)
 }
 
-thisAuthor = c('Tenenbaum', 'Griffiths')
+thisAuthor = c('Tenenbaum')
 
 topic.df %>% authorTopicDistByYear(thisAuthor,.,50) %>%
   ggplot(aes(x=year,y=prob,group = topic))+
@@ -196,6 +196,37 @@ projection_angles %>%
   ylim(1.2, 2.2)
 
 
+authorsInfluence = function(topic.df, N= 50, thisAuthor){
+      global_topic =  topic.df %>% 
+                    globalTopicDistByYear(., N) %>% # long format with topic, year, probability
+                    group_by(topic) %>% 
+                    mutate(diff = lead(prob) - prob)
+      
+      author_topic = topic.df %>% 
+        authorTopicDistByYear(thisAuthor, ., 50) %>% 
+        group_by(topic) %>% 
+        mutate(diff = lead(prob) - prob)
+      
+      combined_vec = cbind(global_topic, author_topic) %>%
+        mutate(target_vec = prob - prob1)%>%
+        filter(!is.na(diff) & !is.nan(diff1) & !is.nan(target_vec))
+      
+      projection_angles = combined_vec %>%
+        group_by(year) %>%
+        summarize(proj_angle_author = get_projection_angle(diff1, target_vec),
+                  proj_angle_global = get_projection_angle(diff, target_vec))%>%
+        ungroup()%>%
+        summarise(global_influence_author = mean(proj_angle_author), author_influence_global = mean(proj_angle_global))
+      return(data.frame(author = thisAuthor, 
+                        global_influence_author = projection_angles$global_influence_author, 
+                        author_influence_global = projection_angles$author_influence_global))
+  }
 
+author_influence = author_net %>% 
+  mutate(authorLast = strsplit(authorAbbr, ' ')) %>% 
+  .$authorLast %>% 
+  sapply(function(x){return(x[2])}) %>% 
+  unique()%>%
+  mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N=50))
 
-
+wrtie.csv(author_influence, 'author_influence_angle_means')
