@@ -125,3 +125,18 @@ getAuthorList = function(df){
   
   bind_rows(byAuthor1, byAuthor2)
 }
+
+transform_authorAbbr = function(df){
+  newAuthors <- getAuthorList(df) %>%
+    group_by(title) %>%
+    nest(authorAbbr) %>%
+    mutate(authors = map(data, unlist),
+           authors = map_chr(authors, paste, collapse = ", ")) %>%
+    select(title, authors)
+  newdf <- left_join(df, newAuthors, by="title") %>%
+    mutate(authors = authors.y) %>%
+    select(-c(authors.x,authors.y)) %>%
+    select(title, authors, everything())
+  return(newdf)
+}
+

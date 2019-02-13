@@ -42,6 +42,9 @@ topic.df = read_csv(DATA_50)
 topic.df = read_csv(DATA_100)
 glimpse(topic.df)
 
+topic.df = transform_authorAbbr(topic.df)
+
+
 global.means = get_avg_topic_dist(topic.df)
 
 # Compare to one paper
@@ -251,6 +254,9 @@ cent$authorLast =  centralityQuantile(centrality) %>%
   mutate(authorLast = strsplit(authorAbbr, ' ')) %>%  
   .$authorLast %>% 
   sapply(function(x){return(x[2])})
+
+author_influence %>%
+  filter(global_influence_author != 'NaN', author_influence_global != 'NaN')
   
 author_influence_centrality = author_influence_centrality%>%
   inner_join(cent)%>%
