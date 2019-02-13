@@ -231,10 +231,49 @@ author_influence = centralityQuantile(centrality) %>%
   unique()%>%
   mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N=50))
 
+
 author_influence = data.frame(t(author_influence))
 
 names(author_influence) = c("author", "global_influence_author", "author_influence_global")
 
-author_influence %>%
-  filter(global_influence_author != 'NaN', author_influence_global != 'NaN') %>%
+author_influence_centrality = author_influence
+
+author_influence_centrality$authorLast = centralityQuantile(centrality) %>% 
+  mutate(authorAbbr = as.character(label))%>%
+  mutate(authorLast = strsplit(authorAbbr, ' ')) %>%  
+  .$authorLast %>% 
+  sapply(function(x){return(x[2])}) %>% 
+  unique()
+
+cent = centralityQuantile(centrality)
+cent$authorLast =  centralityQuantile(centrality) %>% 
+  mutate(authorAbbr = as.character(label))%>%
+  mutate(authorLast = strsplit(authorAbbr, ' ')) %>%  
+  .$authorLast %>% 
+  sapply(function(x){return(x[2])})
   
+author_influence_centrality = author_influence_centrality%>%
+  inner_join(cent)%>%
+  filter(global_influence_author != 'NaN', author_influence_global != 'NaN') 
+
+ cor.test(as.numeric(author_influence$global_influence_author), as.numeric(author_influence$author_influence_global))
+
+ author_influence_centrality = author_influence_centrality %>%
+   mutate(author_influence_global = as.numeric(as.character(author_influence_global)),
+          global_influence_author = as.numeric(as.character(global_influence_author)))
+ 
+ ggplot(author_influence_centrality)+
+   geom_histogram(aes(x=author_influence_global), bins = 50, fill = 'red', alpha = .5)+
+   geom_histogram(aes(x=global_influence_author), bins = 50,fill = 'blue', alpha = .5)
+ 
+ ggplot(author_influence)+
+   geom_histogram(aes(x=measure), bins = 50, fill = 'red', alpha = .5)
+   
+ 
+ cor.test(author_influence_centrality$global_influence_author,author_influence_centrality$author_influence_global)
+
+ cor.test(author_influence_centrality$global_influence_author,log(author_influence_centrality$measure))
+ 
+ cor.test(author_influence_centrality$author_influence_global,log(author_influence_centrality$measure)) 
+          
+ 

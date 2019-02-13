@@ -12,15 +12,15 @@
     "path" : null,
     "project_path" : null,
     "properties" : {
-        "cacheKey" : "65204D7",
+        "cacheKey" : "4782F143",
         "caption" : "author_influence",
-        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=author_influence&cache_key=65204D7",
-        "displayedObservations" : "3",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=author_influence&cache_key=4782F143",
+        "displayedObservations" : "459",
         "environment" : "",
         "object" : "author_influence",
         "preview" : "0",
-        "totalObservations" : "3",
-        "variables" : "459"
+        "totalObservations" : "459",
+        "variables" : "3"
     },
     "relative_order" : 8,
     "source_on_save" : false,
