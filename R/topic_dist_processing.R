@@ -223,11 +223,18 @@ authorsInfluence = function(topic.df, N= 50, thisAuthor){
                         author_influence_global = projection_angles$author_influence_global))
   }
 
-author_influence = author_net %>% 
+author_influence = centralityQuantile(centrality) %>% 
+  mutate(authorAbbr = as.character(label))%>%
   mutate(authorLast = strsplit(authorAbbr, ' ')) %>% 
   .$authorLast %>% 
   sapply(function(x){return(x[2])}) %>% 
   unique()%>%
   mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N=50))
 
-wrtie.csv(author_influence, 'author_influence_angle_means')
+author_influence = data.frame(t(author_influence))
+
+names(author_influence) = c("author", "global_influence_author", "author_influence_global")
+
+author_influence %>%
+  filter(global_influence_author != 'NaN', author_influence_global != 'NaN') %>%
+  
