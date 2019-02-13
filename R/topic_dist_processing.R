@@ -52,11 +52,10 @@ sample.paper.topics = topic.df[1,]
 sample.paper.difference.vector = get_paper_global_comparison(sample.paper.topics, global.means)
 
 # Select an author's papers, all papers minus that author
-tenenbaum.comparison = get_author_rows(c('Tenenbaum','Griffiths'), topic.df)
+tenenbaum.comparison = get_author_rows(c("J Tenenbaum", "T Griffiths"), topic.df)
 tenenbaum = tenenbaum.comparison$author
 all.minus.tenenbaum = tenenbaum.comparison$global
 
-get_author_rows('Michael', topic.df)
 
 #plotting author topic dist by year
 
