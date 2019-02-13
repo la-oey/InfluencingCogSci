@@ -27,7 +27,7 @@ get_author_rows <- function(author.lookup, df) {
     filter(authors %in% author.grep)
   all.other.rows = anti_join(df, author.rows, by = c('authors'))
   sanity.check = dim(author.rows)[1] + dim(all.other.rows)[1] == dim(df)[1]
-  print(paste("Sanity check for author extraction passed: ", sanity.check, sep = " "))
+  #print(paste("Sanity check for author extraction passed: ", sanity.check, sep = " "))
   return(list(author = author.rows, global = all.other.rows))
 }
 
@@ -217,7 +217,8 @@ authorsInfluence = function(topic.df, N= 50, thisAuthor){
                   proj_angle_global = get_projection_angle(diff, target_vec))%>%
         ungroup()%>%
         summarise(global_influence_author = mean(proj_angle_author), author_influence_global = mean(proj_angle_global))
-      return(data.frame(author = thisAuthor, 
+     
+       return(c(author = thisAuthor, 
                         global_influence_author = projection_angles$global_influence_author, 
                         author_influence_global = projection_angles$author_influence_global))
   }
