@@ -146,7 +146,7 @@ glimpse(data.final)
 ##############################
 ### EXPERIMENTING WITH DVs ###
 ##############################
-thisAuthor = c('Tenenbaum')
+#thisAuthor = c('Tenenbaum')
 
 get_projection_angle = function(vec.a, vec.b) {
   # get projection angles
@@ -203,7 +203,7 @@ authorsInfluence = function(topic.df, N= 50, thisAuthor){
                     mutate(diff = lead(prob) - prob)
       
       author_topic = topic.df %>% 
-        authorTopicDistByYear(thisAuthor, ., 50) %>% 
+        authorTopicDistByYear(thisAuthor, ., N) %>% 
         group_by(topic) %>% 
         mutate(diff = lead(prob) - prob)
       
@@ -213,67 +213,68 @@ authorsInfluence = function(topic.df, N= 50, thisAuthor){
       
       projection_angles = combined_vec %>%
         group_by(year) %>%
-        summarize(proj_angle_author = get_projection_angle(diff1, target_vec),
-                  proj_angle_global = get_projection_angle(diff, target_vec))%>%
+        summarize(proj_author = get_projection_angle(diff1, target_vec)*sqrt(sum(diff1^2)),
+                  proj_global = get_projection_angle(diff, target_vec)*sqrt(sum(diff^2)))%>%
         ungroup()%>%
-        summarise(global_influence_author = mean(proj_angle_author), author_influence_global = mean(proj_angle_global))
-     
+        summarise(global_influence_author = mean(proj_author), author_influence_global = mean(proj_global))
+     print(thisAuthor)
        return(c(author = thisAuthor, 
                         global_influence_author = projection_angles$global_influence_author, 
                         author_influence_global = projection_angles$author_influence_global))
-  }
+}
 
-author_influence = centralityQuantile(centrality) %>% 
+
+author_influence = centralityQuantile(centrality, q= c(.90,1)) %>% 
   mutate(authorAbbr = as.character(label))%>%
   mutate(authorLast = strsplit(authorAbbr, ' ')) %>% 
   .$authorLast %>% 
   sapply(function(x){return(x[2])}) %>% 
   unique()%>%
-  mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N=50))
+  mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N=100))
 
 
 author_influence = data.frame(t(author_influence))
 
 names(author_influence) = c("author", "global_influence_author", "author_influence_global")
 
+ggplot(author_influence_centrality)+
+  geom_histogram(aes(x=author_influence_global), bins = 50, fill = 'red', alpha = .5)+
+  geom_histogram(aes(x=global_influence_author), bins = 50,fill = 'blue', alpha = .5)
+
+ggplot(author_influence_centrality)+
+  geom_histogram(aes(x=measure), bins = 50, fill = 'red', alpha = .5)
+
+
+ggplot(author_influence_centrality)+
+  geom_point(aes(x=log10(measure), y = author_influence_global))
+
+
+
 author_influence_centrality = author_influence
 
-author_influence_centrality$authorLast = centralityQuantile(centrality) %>% 
-  mutate(authorAbbr = as.character(label))%>%
-  mutate(authorLast = strsplit(authorAbbr, ' ')) %>%  
-  .$authorLast %>% 
-  sapply(function(x){return(x[2])}) %>% 
-  unique()
-
-cent = centralityQuantile(centrality)
-cent$authorLast =  centralityQuantile(centrality) %>% 
+cent = centralityQuantile(centrality,q= c(.90,1))
+cent$authorLast =  centralityQuantile(centrality,q= c(.90,1)) %>% 
   mutate(authorAbbr = as.character(label))%>%
   mutate(authorLast = strsplit(authorAbbr, ' ')) %>%  
   .$authorLast %>% 
   sapply(function(x){return(x[2])})
   
 author_influence_centrality = author_influence_centrality%>%
-  inner_join(cent)%>%
+  inner_join(cent, by = c("author" = "authorLast"))%>%
   filter(global_influence_author != 'NaN', author_influence_global != 'NaN') 
 
- cor.test(as.numeric(author_influence$global_influence_author), as.numeric(author_influence$author_influence_global))
-
- author_influence_centrality = author_influence_centrality %>%
+author_influence_centrality = author_influence_centrality %>%
    mutate(author_influence_global = as.numeric(as.character(author_influence_global)),
           global_influence_author = as.numeric(as.character(global_influence_author)))
- 
- ggplot(author_influence_centrality)+
-   geom_histogram(aes(x=author_influence_global), bins = 50, fill = 'red', alpha = .5)+
-   geom_histogram(aes(x=global_influence_author), bins = 50,fill = 'blue', alpha = .5)
- 
- ggplot(author_influence)+
-   geom_histogram(aes(x=measure), bins = 50, fill = 'red', alpha = .5)
-   
- 
- cor.test(author_influence_centrality$global_influence_author,author_influence_centrality$author_influence_global)
 
- cor.test(author_influence_centrality$global_influence_author,log(author_influence_centrality$measure))
  
- cor.test(author_influence_centrality$author_influence_global,log(author_influence_centrality$measure)) 
+cor.test(author_influence_centrality$global_influence_author,author_influence_centrality$author_influence_global)
+
+cor.test(author_influence_centrality$global_influence_author,log(author_influence_centrality$measure))
+ 
+cor.test(author_influence_centrality$author_influence_global,log(author_influence_centrality$measure)) 
           
+
+
+
  
