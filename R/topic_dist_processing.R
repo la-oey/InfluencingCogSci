@@ -42,6 +42,9 @@ topic.df = read_csv(DATA_50)
 topic.df = read_csv(DATA_100)
 glimpse(topic.df)
 
+topic.df = transform_authorAbbr(topic.df)
+
+
 global.means = get_avg_topic_dist(topic.df)
 
 # Compare to one paper
@@ -49,11 +52,10 @@ sample.paper.topics = topic.df[1,]
 sample.paper.difference.vector = get_paper_global_comparison(sample.paper.topics, global.means)
 
 # Select an author's papers, all papers minus that author
-tenenbaum.comparison = get_author_rows(c('Tenenbaum','Griffiths'), topic.df)
+tenenbaum.comparison = get_author_rows(c("J Tenenbaum", "T Griffiths"), topic.df)
 tenenbaum = tenenbaum.comparison$author
 all.minus.tenenbaum = tenenbaum.comparison$global
 
-get_author_rows('Michael', topic.df)
 
 #plotting author topic dist by year
 
@@ -258,6 +260,9 @@ cent$authorLast =  centralityQuantile(centrality,q= c(.90,1)) %>%
   mutate(authorLast = strsplit(authorAbbr, ' ')) %>%  
   .$authorLast %>% 
   sapply(function(x){return(x[2])})
+
+author_influence %>%
+  filter(global_influence_author != 'NaN', author_influence_global != 'NaN')
   
 author_influence_centrality = author_influence_centrality%>%
   inner_join(cent, by = c("author" = "authorLast"))%>%
@@ -274,7 +279,11 @@ cor.test(author_influence_centrality$global_influence_author,log(author_influenc
  
 cor.test(author_influence_centrality$author_influence_global,log(author_influence_centrality$measure)) 
           
+<<<<<<< HEAD
 
 
 
  
+=======
+ 
+>>>>>>> 16504dc9ffec128d179cc1c4d07e6b1b2e06cc10
