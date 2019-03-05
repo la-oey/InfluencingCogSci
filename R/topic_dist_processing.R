@@ -279,11 +279,3 @@ cor.test(author_influence_centrality$global_influence_author,log(author_influenc
  
 cor.test(author_influence_centrality$author_influence_global,log(author_influence_centrality$measure)) 
           
-<<<<<<< HEAD
-
-
-
- 
-=======
- 
->>>>>>> 16504dc9ffec128d179cc1c4d07e6b1b2e06cc10
