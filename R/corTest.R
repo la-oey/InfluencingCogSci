@@ -19,7 +19,7 @@ centrality_subset = centralityQuantile(centrality, q= c(0,1))
 author_influence.50 = centrality_subset%>%
   pull(label)%>%
   unique()%>%
-  mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df.50, N=50)) 
+  mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df.50, N=50)) #take 23 min to run with full centrality vector
 
 author_influence.50 = data.frame(t(author_influence.50))%>%
   inner_join(centrality_subset, by = c("author" = "label"))%>%
