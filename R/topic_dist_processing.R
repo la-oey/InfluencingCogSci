@@ -219,7 +219,7 @@ authorsInfluence = function(topic.df, N= 50, thisAuthor){
                   proj_global = get_projection_angle(diff, target_vec)*sqrt(sum(diff^2)))%>%
         ungroup()%>%
         summarise(global_influence_author = mean(proj_author), author_influence_global = mean(proj_global))
-     print(thisAuthor)
+     #print(thisAuthor)
        return(c(author = thisAuthor, 
                         global_influence_author = projection_angles$global_influence_author, 
                         author_influence_global = projection_angles$author_influence_global))
@@ -232,7 +232,7 @@ author_influence = centralityQuantile(centrality, q= c(.90,1)) %>%
   .$authorLast %>% 
   sapply(function(x){return(x[2])}) %>% 
   unique()%>%
-  mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N=100))
+  mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N=50))  # takes 2 min
 
 
 author_influence = data.frame(t(author_influence))
@@ -261,18 +261,13 @@ cent$authorLast =  centralityQuantile(centrality,q= c(.90,1)) %>%
   .$authorLast %>% 
   sapply(function(x){return(x[2])})
 
-author_influence %>%
-  filter(global_influence_author != 'NaN', author_influence_global != 'NaN')
-  
 author_influence_centrality = author_influence_centrality%>%
   inner_join(cent, by = c("author" = "authorLast"))%>%
-  filter(global_influence_author != 'NaN', author_influence_global != 'NaN') 
-
-author_influence_centrality = author_influence_centrality %>%
+  filter(global_influence_author != 'NaN', author_influence_global != 'NaN')%>%
    mutate(author_influence_global = as.numeric(as.character(author_influence_global)),
           global_influence_author = as.numeric(as.character(global_influence_author)))
 
- 
+
 cor.test(author_influence_centrality$global_influence_author,author_influence_centrality$author_influence_global)
 
 cor.test(author_influence_centrality$global_influence_author,log(author_influence_centrality$measure))
