@@ -29,7 +29,7 @@ edgeList = function(author_net,uniqueEdges = T){
       edges_itt = getEdges(temp$authorAbbr)
     }
     edges = rbind(edges,edges_itt)
-    print(paste0(which(unique(author_net$title) == k), ' out of ', length(unique(author_net$title))))
+    #print(paste0(which(unique(author_net$title) == k), ' out of ', length(unique(author_net$title))))
   }
   if(uniqueEdges && length(edges!=0)){
     edges = edges[!duplicated(apply(edges,1,function(x) paste(sort(x),collapse=''))),]
