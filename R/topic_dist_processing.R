@@ -118,9 +118,9 @@ centrality = writeAuthorNet(author_net)
 
 num_papers = author_net %>%
   group_by(authorAbbr) %>%
-  summarise(n = n()) %>%
-  mutate(prop = n/sum(n),
-         rank = dense_rank(desc(n)))
+  summarise(n = n())
+  # mutate(prop = n/sum(n),
+  #        rank = dense_rank(desc(n)))
 
 centrality %>% 
   filter(CM == 'degree') %>% 

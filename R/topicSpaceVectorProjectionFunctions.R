@@ -58,14 +58,9 @@ get_projection_angle = function(vec.a, vec.b) {
 
 
 # authorsInfluence = function(topic.df, N = 50, thisAuthor){
-authorsInfluence = function(topic.df, N = 50, thisAuthor, author.matrix, year.matrix){
+authorsInfluence = function(topic.df, N = 50, thisAuthor, author.matrix, year.matrix, global_topic){
   #print(thisAuthor)
   thisAuthor = as.character(thisAuthor)
-  
-  global_topic =  topic.df %>% 
-    globalTopicDistByYear(., N) %>% # long format with topic, year, probability (global average of each topic by year)
-    group_by(topic) %>% 
-    mutate(diff = lead(prob) - prob)
   
   author_topic = topic.df %>%
     # authorTopicDistByYear(thisAuthor, ., N) %>% 
