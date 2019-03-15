@@ -1,13 +1,17 @@
 
 
-NullShuffleBundle = function(topic.df, centrality_subset, N.topics){
+NullShuffleBundle = function(topic.df, centrality_subset, N ,
+                                  author.matrix , year.matrix,
+                                  global_topic){
   null.topic.df = topic.df %>%
     mutate(authors = sample(authors,length(authors), F))
   
   author_influence.null = centrality_subset%>%
     pull(label)%>%
     unique()%>%
-    mapply(authorsInfluence,.,MoreArgs = list(topic.df = null.topic.df, N=N.topics)) 
+    mapply(authorsInfluence,.,MoreArgs = list(topic.df = null.topic.df, N = N,
+                                              author.matrix = author.matrix, year.matrix = year.matrix,
+                                              global_topic = global_topic)) 
   
   author_influence.null = data.frame(t(author_influence.null))%>%
     inner_join(centrality_subset, by = c("author" = "label"))%>%

@@ -65,15 +65,11 @@ writeAuthorNet = function(author_net){
   #We can certainly use degree centrality, but need to carefully consider other measures because of the weird structure of the graph. igraph has other useful network analysis functions that might help us systematically trim the graph to a simple and fully connected one.
   #centrality (degree, close, between)
   degree_centrality = centr_degree(graph)
-  closeness_centrality = centr_clo(graph)
-  betweenness_centrality = centr_betw(graph)
-  
-  all_centrality = data.frame(id = rep(all_nodes$id,3), 
-                              label = rep(all_nodes$label,3), 
-                              measure = c(degree_centrality$res, closeness_centrality$res, betweenness_centrality$res), 
-                              CM = c(rep('degree', length(all_nodes$id)), 
-                                     rep('close', length(all_nodes$id)), 
-                                     rep('between', length(all_nodes$id))))
+
+  all_centrality = data.frame(id = all_nodes$id, 
+                              label = all_nodes$label, 
+                              measure = degree_centrality$res, 
+                              CM = rep('degree', length(all_nodes$id)))
   
   return(all_centrality)
 }

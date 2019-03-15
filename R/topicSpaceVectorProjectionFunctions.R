@@ -66,7 +66,7 @@ authorsInfluence = function(topic.df, N = 50, thisAuthor, author.matrix, year.ma
     # authorTopicDistByYear(thisAuthor, ., N) %>% 
     authorTopicDistByYear(thisAuthor, ., N, author.matrix, year.matrix) %>% 
     group_by(topic) %>% 
-    mutate(diff = lead(prob) - prob)
+    mutate(diff = lead(prob,3) - prob)
   
   combined_vec = cbind(global_topic, author_topic) %>%
     mutate(target_vec = prob - prob1)%>%
