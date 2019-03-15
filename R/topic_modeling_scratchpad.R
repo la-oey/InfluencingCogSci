@@ -198,3 +198,51 @@ cloud(stmobj = abstract.model.manual,
 plot(abstract.model, type = "summary")
 plot(abstract.model, type = "perspectives", topics = c(5, 10))
 
+
+
+
+
+DATA_ALT = "cogsci_abstracts.csv"
+
+
+# Model original abstracts data
+df.abstracts.alt <- read_csv(DATA_ALT)
+df.abstracts.alt <- clean_abstracts(df.abstracts.alt)
+abstract.model.framework <- structure_text(df.abstracts.alt$abstract_cleaned, df.abstracts.alt) # takes < 1 min.
+# Fit model
+abstract.model.manual <- stm(documents = abstract.model.framework$documents, 
+                             vocab = abstract.model.framework$vocab,
+                             K = 10,
+                             max.em.its = 75, # K = 10 converges after ~25 iterations
+                             init.type = "Spectral") # Takes 1-2 mins.
+# Validate model
+labelTopics(abstract.model.manual)
+findThoughts(abstract.model.manual, texts = df.abstracts.alt$abstract_cleaned, n = 3)
+
+# Visualize model
+cloud(stmobj = abstract.model.manual,
+      topic = 1,
+      type = "model",
+      max.words = 25) # word cloud of most probable 25 words in topic 1
+cloud(stmobj = abstract.model.manual,
+      topic = 1,
+      type = "documents",
+      documents = abstract.model.framework$documents,
+      thresh = 0.8,
+      max.words = 25) # word cloud of most probable 25 words in topic 1 selected from most likely documents
+
+
+# Model newer abstracts data
+df.abstracts <- read_csv(DATA)
+df.abstracts <- clean_abstracts(df.abstracts)
+abstract.model.framework <- structure_text(df.abstracts$abstract_cleaned, df.abstracts) # takes < 1 min.
+# Fit model
+abstract.model.manual <- stm(documents = abstract.model.framework$documents, 
+                             vocab = abstract.model.framework$vocab,
+                             K = 10,
+                             max.em.its = 75, # K = 10 converges after ~50 iterations
+                             init.type = "Spectral") # Takes 1-2 mins.
+# Validate model
+labelTopics(abstract.model.manual)
+
+

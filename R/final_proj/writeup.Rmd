@@ -1,0 +1,42 @@
+---
+title: "Author Topic Space Dynamics"
+author: Erik Brockbank, Isabella DeStefano, Lauren Oey, Hayden Schill, Jamal Williams
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction #
+
+
+
+# Data #
+
+
+# Methods #
+
+
+### Author Network Centrality ###
+
+
+### Topic Model ###
+
+
+### Field Dynamics ###
+
+
+
+# Results #
+
+
+
+# Discussion #
+
+
+
+
+
+
