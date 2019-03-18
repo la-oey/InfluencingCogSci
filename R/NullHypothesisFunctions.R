@@ -2,10 +2,10 @@
 
 NullShuffleBundle = function(topic.df, centrality_subset, N ,
                                   author.matrix , year.matrix){
-  null.topic.df = topic.df %>%
-    mutate(authors = sample(authors,length(authors), F))
+  indx = sample(1:nrow(author.matrix),nrow(author.matrix))
+  author.matrix = author.matrix[indx,]
   
-  global_topic =  null.topic.df %>% 
+  global_topic =  topic.df %>% 
     globalTopicDistByYear(., N) %>% # long format with topic, year, probability (global average of each topic by year)
     group_by(topic) %>% 
     mutate(diff = lead(prob,3) - prob)
@@ -14,7 +14,7 @@ NullShuffleBundle = function(topic.df, centrality_subset, N ,
   author_influence.null = centrality_subset%>%
     pull(label)%>%
     unique()%>%
-    mapply(authorsInfluence,.,MoreArgs = list(topic.df = null.topic.df, N = N,
+    mapply(authorsInfluence,.,MoreArgs = list(topic.df = topic.df, N = N,
                                               author.matrix = author.matrix, year.matrix = year.matrix,
                                               global_topic = global_topic)) 
   
