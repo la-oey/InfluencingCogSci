@@ -1,11 +1,17 @@
 ---
 title: "Author Topic Space Dynamics"
-author: Erik Brockbank, Isabella DeStefano, Lauren Oey, Hayden Schill, Jamal Williams
+author: Erik Brockbank, Isabella DeStefano, Lauren A. Oey, Hayden Schill, Jamal Williams
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+df <- read_csv("topic_dist_fulltext_100.csv")
+authorCounts <- read_csv("author_net.csv")
 ```
 
 
@@ -14,6 +20,37 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 # Data #
+
+We developed a novel corpus of CogSci papers that consists of the title, authors, abstracts, full text, and year of conference papers from 2000 to 2018. Original texts were hosted by two websites: eScholarship and MindModeling. To extract the data from the web, we used a number of Python libraries, namely the web scraping library Beautiful Soup (bs4), a PDF-to-text converter (pdfminer), a URL handling module (urllib), and a regular expressions handling library (re). After data extraction, we processed the raw text in R. This involved removing irrelevant text (e.g. cover pages, text appearing before the abstract, etc.), removing punctuation, non-ASCII characters, escape characters, and other text cleaning tasks. In our final analysis, we excluded the 13.70% of the papers for which we were missing the corresponding full text. Our final data set included 9,165 papers and 11,312 unique authors.
+
+Our analysis required careful mapping of research papers to their corresponding authors, yet collecting data from multiple websites with different formatting led to lack of systematicity in author names. One issue was that there were multiple name entries for the same author (e.g. Joshua Tenenbaum, Joshua B. Tenenbaum, Josh Tenenbaum). Another related issue, which we have dubbed the "*Kim quandary*", is that an author’s last name often failed to act as a unique identifier. This was especially problematic for popular surnames used by a plethora of authors (e.g. Kim, Smith, Williams). To cope with these issues we resorted to identifying authors by last name and first initial (e.g. J Tenenbaum, E Vul), which although not perfect, certainly reduces the impact of the *Kim quandary*.
+
+The impact of CogSci has grown over the last few years and Figure 1 demonstrates this general upward trend. Furthermore, there are several leading authors in the field. The publications of these leaders increase over the years as visualized in Figure 2.
+
+```{r papersByYear, fig.cap="**Fig. 1: The count of CogSci papers by year (removing papers missing the full text).**"}
+df %>%
+  group_by(year) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(x=year, y=count)) +
+  geom_line() +
+  scale_x_continuous(limits=c(1999,2020)) +
+  scale_y_continuous("count of papers") +
+  theme_minimal()
+```
+
+```{r}
+topAuth <- authorCounts %>%
+  top_n(10,n) %>%
+  .$authorAbbr
+
+# df %>%
+#   filter(authors %in% topAuth) %>%
+#   group_by(year) %>%
+  
+```
+
+
+
 
 
 # Methods #
