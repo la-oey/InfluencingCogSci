@@ -16,6 +16,7 @@ library(wordcloud)
 # Resources:
 # http://www.structuraltopicmodel.com/
 
+
 ############################
 ### PROCESSING FUNCTIONS ###
 ############################
@@ -26,9 +27,9 @@ clean_abstracts <- function(data_frame) {
   # Creates exception for words containing punctuation, "e.g." & "i.e."
   data_frame$abstract <- as.character(data_frame$abstract, na.omit = T)
   data_frame <- data_frame %>%
-    mutate(abstract_cleaned = str_replace_all(abstract, c("e\\.g\\."="e1g1", "i\\.e\\."="i1e1")),
-           abstract_cleaned = str_replace_all(abstract_cleaned, c("[^a-zA-Z0-9\\&\\s]"=" ", "[\\n\\t\\f]"="")),
-           abstract_cleaned = str_replace_all(abstract_cleaned, c("e1g1"="e.g.", "i1e1"="i.e.")))
+    mutate(abstract_cleaned = str_replace_all(abstract, c("e\\.g\\." = "e1g1", "i\\.e\\." = "i1e1")),
+           abstract_cleaned = str_replace_all(abstract_cleaned, c("[^a-zA-Z0-9\\&\\s]" = " ", "[\\n\\t\\f]" = "")),
+           abstract_cleaned = str_replace_all(abstract_cleaned, c("e1g1" = "e.g.", "i1e1" = "i.e.")))
   return(data_frame)
 }
 
@@ -53,26 +54,25 @@ get_removed_docs <- function(documents) {
 }
 
 
-#####################
-### DATA MODELING ###
-#####################
+#################
+### FIT MODEL ###
+#################
 
 DATA = "cogsci_papers.csv"
+TOPICS = 100 # NB: tweak this to have changes reflected in all code below
 
-
-# Model full text
 df.fulltext <- read_csv(DATA)
-topics = 100
 
-
+# textProcessor function supplied by stm
 processed <- textProcessor(df.fulltext$full_text)
 
-# Catch and release papers removed during textProcessor
+# Catch and release papers removed during textProcessor call above
 removed <- processed$docs.removed
 fulltext.papers.cleaned = df.fulltext[-removed,]
 dim(df.fulltext)
 dim(fulltext.papers.cleaned)
 
+# prepDocuments function supplied by stm
 fulltext.model.framework <- prepDocuments(processed$documents, processed$vocab, processed$meta, lower.thresh = 10)
 
 # Catch and release second round of papers removed during prepDocuments
@@ -83,19 +83,26 @@ dim(fulltext.papers.cleaned.model)
 # Fit model: can take 20+ mins. for 50 topics or more
 fulltext.model.manual <- stm(documents = fulltext.model.framework$documents, 
                              vocab = fulltext.model.framework$vocab,
-                             K = topics,
-                             max.em.its = 100,
+                             K = TOPICS,
+                             max.em.its = 100, # tweak this param as needed
                              init.type = "Spectral") # note can also use "LDA" here for Gibbs sampler instead of variational inference
 
 # k = 10 converges after 33 iterations
 # k = 25 converges after 76 iterations
 # k = 50 converges after 81 iterations
 # k = 100 converges after 78 iterations but take multiple hours
-summary(fulltext.model.manual)
 
-topic.dist = fulltext.model.manual$theta
-dim(topic.dist)
-topic.dist[1,]
+
+# Summary of model
+summary(fulltext.model.manual)
+summary.STM(fulltext.model.manual)
+
+
+##################
+### SAVE MODEL ###
+##################
+
+topic.dist = fulltext.model.manual$theta # Number of Documents by Number of Topics matrix of topic proportions.
 
 df.papers = data.frame(title = fulltext.papers.cleaned.model$title,
                        authors = fulltext.papers.cleaned.model$authors,
@@ -104,53 +111,18 @@ df.papers = data.frame(title = fulltext.papers.cleaned.model$title,
 df.topic.dist = cbind(df.papers, topic.dist)
 
 # Write to csv for processing elsewhere
-csv.title.50 = 'topic_dist_fulltext_50.csv'
-csv.title.100 = 'topic_dist_fulltext_100.csv'
-# write_csv(df.topic.dist, csv.title.50)
-write_csv(df.topic.dist, csv.title.100)
+csv.title = paste('topic_dist_fulltext_', TOPICS, '.csv', sep = '')
+write_csv(df.topic.dist, csv.title)
 
-# test csv writing
-csv.test = read_csv(csv.title.50)
+# test csv
+csv.test = read_csv(csv.title)
 glimpse(csv.test)
 
 
 
-# Model fulltext from individual years
-sample.year = '2017'
-papers.sample.year <- df.fulltext %>%
-  filter(year == sample.year)
-removed.docs.sample.year = get_removed_docs(papers.sample.year$full_text)
-docs.sample.year.cleaned = papers.sample.year[-removed.docs.sample.year,]
-
-fulltext.model.framework.sample.year <- structure_text(papers.sample.year$full_text)
-# Summary of fulltext.model.framework.2017:
-# 885 documents, 4110 terms and 365292 tokens
-fulltext.model.manual.sample.year <- stm(documents = fulltext.model.framework.sample.year$documents, 
-                             vocab = fulltext.model.framework.sample.year$vocab,
-                             K = 20, # converges after 82 iters for k = 20, very fast
-                             max.em.its = 100,
-                             init.type = "Spectral")
-# validation
-summary(fulltext.model.manual.sample.year)  # looks pretty good
-
-# analysis
-topic.dist = fulltext.model.manual.sample.year$theta
-dim(topic.dist) ;topic.dist[1,]
-
-df.papers = data.frame(title = docs.sample.year.cleaned$title,
-                           authors = docs.sample.year.cleaned$authors,
-                           year = docs.sample.year.cleaned$year)
-
-df.topic.dist = cbind(df.papers, topic.dist) 
-
-# Write to csv for processing elsewhere
-write_csv(df.topic.dist, 'topic_dist_year.csv')
-
-
-
-#####################
-### VISUALIZATION ###
-#####################
+#######################
+### VISUALIZE MODEL ###
+#######################
 
 # Validate model
 labelTopics(fulltext.model.manual)
@@ -159,27 +131,9 @@ labelTopics(fulltext.model.manual)
 cloud(stmobj = fulltext.model.manual,
       topic = 22,
       type = "model",
-      max.words = 25) # word cloud of most probable 25 words in topic 1
+      max.words = 25) # word cloud of most probable 25 words in topic param
 
 
-#####################
-### ANALYSIS      ###
-#####################
 
-summary.STM(fulltext.model.manual)
 
-topic.dist = fulltext.model.manual$theta # Number of Documents by Number of Topics matrix of topic proportions.
-
-# TODO reformat this to include title, author, and year of each document
-
-# TODO write reformatted matrix to csv for use by companion functions
-
-# TODO write companion functions for:
-# calculating mean topic distribution over all docs
-# compare topic dist for a particular doc to mean dist over all docs (should return vector of coefficients for global topic weight / doc topic weight?)
-
-# TODO parse these out by year? ...
-papers.2017 <- df.fulltext %>%
-  filter(year == '2017')
-fulltext.model.framework.2017 <- structure_text(papers.2017$full_text)
 
