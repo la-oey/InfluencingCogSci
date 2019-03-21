@@ -10,9 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
+library(Matrix)
 source("networkCentralityFunctions.R")
-df <- read_csv("topic_dist_fulltext_100.csv")
 authorCounts <- read_csv("author_net.csv")
+topic.df.50 = read_csv("topic_dist_fulltext_50.csv")
+H0 = read_csv('H0.csv')
 ```
 
 
@@ -29,7 +31,7 @@ Our analysis required careful mapping of research papers to their corresponding 
 The impact of CogSci has grown over the last few years and Figure 1 demonstrates this general upward trend. Furthermore, there are several leading authors in the field. The publications of these leaders increase over the years as visualized in Figure 2.
 
 ```{r papersByYear, message=FALSE, warning=FALSE, fig.cap="**Fig. 1: The count of CogSci papers by year (removing papers missing the full text).**"}
-df %>%
+topic.df.50 %>%
   group_by(year) %>%
   summarise(count = n()) %>%
   ggplot(aes(x=year, y=count)) +
@@ -40,7 +42,7 @@ df %>%
 ```
 
 ```{r leadAuths, message=FALSE, warning=FALSE, fig.cap="**Fig. 2: The top 6 most published authors (and our sovereign leader, Sir E Vul) and their proportion of contribution out of all CogSci papers contributed for a given year.**"}
-byAuth <- transform_authorAbbr(df) %>%
+byAuth <- transform_authorAbbr(topic.df.50) %>%
   mutate(author=strsplit(authors, ", ")) %>%
   unnest(author) %>%
   select(author, title, year)
@@ -70,21 +72,24 @@ byAuth %>%
 # Methods #
 
 
-![k](lda_graphic)
+![optional caption text](lda_graphic.png)
+
+
+
 
 ### Author Network Centrality ###
 
 ```{r}
-topic.df.50 = read_csv(DATA_50) %>% transform_authorAbbr()
+topic.df.50.processed = topic.df.50 %>% transform_authorAbbr()
 
-author_net = getAuthorList(topic.df.50)
+author_net = getAuthorList(topic.df.50.processed)
 
 centrality = writeAuthorNet(author_net)
 
 ```
 
 
-```{r centrality grpah  message=FALSE, warning=FALSE, fig.cap="**Fig. ??: Degree centrality has a long tail, and so it must be log transformed for our analysis."}
+```{r centrality_graph,  message=FALSE, warning=FALSE, fig.cap="**Fig. ??: Degree centrality has a long tail, and so it must be log transformed for our analysis."}
 centrality %>% 
   filter(CM == 'degree') %>% 
   arrange(desc(measure)) %>%
@@ -113,7 +118,13 @@ centrality_subset = centralityQuantile(centrality, q = c(0,1)) %>% filter(label 
 ```
 
 
-```{r create sparse matricies}
+```{r create sparse matrices}
+authors = centrality_subset %>%
+  pull(label) %>%
+  unique()
+
+papers = topic.df.50$title
+
 author.mat = Matrix(0, 
                     nrow = length(papers),
                     ncol = length(authors),
@@ -177,8 +188,6 @@ author_influence.cors = data.frame(t(author_influence.50))%>%
 
 ```{r cor test results}
 cor_test_gia = author_influence.cors$cor.global.influence.author[[1]]
-
-
 cor_test_aig = author_influence.cors$cor.author.influence.global[[1]]
 ```
 
@@ -189,8 +198,6 @@ author.matrix = author.matrix[indx,]
 ```
 
 ```{r NHST}
-H0 = read_csv('H0.csv')
-
 cor_val_gia = author_influence.cors$cor.global.influence.author[[1]]$estimate
 cor_val_aig = author_influence.cors$cor.author.influence.global[[1]]$estimate
 
