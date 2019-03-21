@@ -70,6 +70,8 @@ byAuth %>%
 # Methods #
 
 
+![k](lda_graphic)
+
 ### Author Network Centrality ###
 
 ```{r}
@@ -174,10 +176,10 @@ author_influence.cors = data.frame(t(author_influence.50))%>%
 
 
 ```{r cor test results}
-author_influence.cors$cor.global.influence.author
+cor_test_gia = author_influence.cors$cor.global.influence.author[[1]]
 
 
-author_influence.cors$cor.author.influence.global
+cor_test_aig = author_influence.cors$cor.author.influence.global[[1]]
 ```
 
 
@@ -205,7 +207,8 @@ pval_aigc = (1-pval_aigc)*2
 H0 %>% 
   ggplot(aes(x=cor.GIAC.cor))+
   geom_histogram()+
-  geom_vline(xintercept = cor_val_gai)+
+  geom_vline(col = 'red', linetype = 2,xintercept = cor_val_gia)+
+  annotate('text',col = 'red',size = 4,label = 'Observed Corelation', x= -0.035+cor_val_gia, y = 600)+
   scale_y_continuous(expand = c(0,0))+
   theme_minimal()+
   xlab('r')+
@@ -215,7 +218,8 @@ H0 %>%
 H0 %>% 
   ggplot(aes(x=cor.AIGC.cor))+
   geom_histogram()+
-  geom_vline(xintercept = cor_val_aig)+
+  geom_vline(col = 'red', linetype = 2,xintercept = cor_val_aig)+
+  annotate('text',col = 'red',size = 4,label = 'Observed Corelation', x= -0.035+cor_val_aig, y = 600)+
   scale_y_continuous(expand = c(0,0))+
   theme_minimal()+
   xlab('r')+
