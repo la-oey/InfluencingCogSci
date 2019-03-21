@@ -72,18 +72,158 @@ byAuth %>%
 
 ### Author Network Centrality ###
 
+```{r}
+topic.df.50 = read_csv(DATA_50) %>% transform_authorAbbr()
+
+author_net = getAuthorList(topic.df.50)
+
+centrality = writeAuthorNet(author_net)
+
+```
+
+
+```{r centrality grpah}
+centrality %>% 
+  filter(CM == 'degree') %>% 
+  inner_join(num_papers,., by = c('authorAbbr' = 'label')) %>%
+  mutate(logCentrality = log(measure)) %>%
+  arrange(desc(measure)) %>%
+  select(-id,-CM,-prop) %>%
+  gather(key = quantity, value = value, -authorAbbr,-rank)%>%
+  ggplot(aes(x=reorder(factor(authorAbbr),rank),y=value))+
+  geom_bar(stat='identity')+
+  ylim(0,50)+
+    facet_grid(quantity~.)
+
+
+```
 
 ### Topic Model ###
 
 
 ### Field Dynamics ###
 
+```{r get centrality subset}
+author_net_filtered = author_net %>%
+  group_by(authorAbbr) %>%
+  summarise(n = n()) %>%
+  filter(n > 1) %>%
+  ungroup()
 
+centrality_subset = centralityQuantile(centrality, q = c(0,1)) %>% filter(label %in% author_net_filtered$authorAbbr)
+```
+
+
+```{r create sparse matricies}
+author.mat = Matrix(0, 
+                    nrow = length(papers),
+                    ncol = length(authors),
+                    dimnames = list(papers, as.character(authors)))
+
+for (col in seq(1:dim(author.mat)[2])) { # This takes 3 mins
+  author.lookup = colnames(author.mat)[col]
+  author.grep = as.vector(unlist(sapply(author.lookup, function(author.lookup){return(grep(author.lookup, topic.df.50$authors, value = TRUE))})))
+  author.rows = topic.df.50 %>%
+    filter(authors %in% author.grep) %>%
+    select(title)
+  if (sum(rownames(author.mat) %in% author.rows$title) > 0) {
+    author.mat[rownames(author.mat) %in% author.rows$title, colnames(author.mat)[col]] = 1
+  }
+}
+
+
+year.mat = Matrix(0,
+                  nrow = length(papers),
+                  ncol = length(years),
+                  dimnames = list(papers, as.character(years)))
+
+for (col in seq(1:dim(year.mat)[2])) { # This takes ~1s
+  year.lookup = colnames(year.mat)[col]
+  year.rows = topic.df.50 %>%
+    filter(as.character(year) == year.lookup) %>%
+    select(title)
+  year.mat[rownames(year.mat) %in% year.rows$title, colnames(year.mat)[col]] = 1
+}
+```
+
+
+```{r calculate dependent measure}
+
+global_topic.50 =  topic.df.50 %>% 
+  globalTopicDistByYear(., 50) %>% # long format with topic, year, probability (global average of each topic by year)
+  group_by(topic) %>% 
+  mutate(diff = lead(prob,3) - prob)
+
+author_influence.50 = centrality_subset %>%
+  pull(label) %>%
+  unique() %>%
+  mapply(authorsInfluence, ., MoreArgs = list(topic.df = topic.df.50, N = 50,
+                                              author.matrix = author.mat, year.matrix = year.mat,
+                                              global_topic = global_topic.50))
+```
 
 # Results #
 
+```{r Calculate cor}
+author_influence.cors = data.frame(t(author_influence.50))%>%
+  inner_join(centrality_subset, by = c("author" = "label"))%>%
+  filter(global_influence_author != 'NaN', author_influence_global != 'NaN')%>%
+  mutate(author_influence_global = as.numeric(as.character(author_influence_global)),
+         global_influence_author = as.numeric(as.character(global_influence_author)))%>%
+  do(cor.global.author = cor.test(.$global_influence_author,.$author_influence_global),
+            cor.global.influence.author.centrality = cor.test(.$global_influence_author,log(.$measure)),
+            cor.author.influence.global.centrality = cor.test(.$author_influence_global,log(.$measure)))
+```
 
 
+```{r cor test results}
+author_influence.cors$cor.global.influence.author
+
+
+author_influence.cors$cor.author.influence.global
+```
+
+
+```{r Null randomization}
+indx = sample(1:nrow(author.matrix),nrow(author.matrix))
+author.matrix = author.matrix[indx,]
+```
+
+```{r NHST}
+H0 = read_csv('H0.csv')
+
+cor_val_gia = author_influence.cors$cor.global.influence.author[[1]]$estimate
+cor_val_aig = author_influence.cors$cor.author.influence.global[[1]]$estimate
+
+pval_giac = (sum(H0$cor.GIAC.cor>cor_val_gia)+1)/(length(H0$cor.GIAC.cor)+2)
+pval_giac*2
+
+pval_aigc = (sum(H0$cor.AIGC.cor>cor_val_aig)+1)/(length(H0$cor.AIGC.cor)+2)
+pval_aigc = (1-pval_aigc)*2
+
+```
+
+
+```{r NHST figures}
+H0 %>% 
+  ggplot(aes(x=cor.GIAC.cor))+
+  geom_histogram()+
+  geom_vline(xintercept = cor_val_gai)+
+  scale_y_continuous(expand = c(0,0))+
+  theme_minimal()+
+  xlab('r')+
+  ggtitle('Null hypothesis for Global influence Author')
+
+
+H0 %>% 
+  ggplot(aes(x=cor.AIGC.cor))+
+  geom_histogram()+
+  geom_vline(xintercept = cor_val_aig)+
+  scale_y_continuous(expand = c(0,0))+
+  theme_minimal()+
+  xlab('r')+
+  ggtitle('Null hypothesis for Author influence Global')
+```
 # Discussion #
 
 
