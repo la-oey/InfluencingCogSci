@@ -8,8 +8,9 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
+source("networkCentralityFunctions.R")
 df <- read_csv("topic_dist_fulltext_100.csv")
 authorCounts <- read_csv("author_net.csv")
 ```
@@ -27,7 +28,7 @@ Our analysis required careful mapping of research papers to their corresponding 
 
 The impact of CogSci has grown over the last few years and Figure 1 demonstrates this general upward trend. Furthermore, there are several leading authors in the field. The publications of these leaders increase over the years as visualized in Figure 2.
 
-```{r papersByYear, fig.cap="**Fig. 1: The count of CogSci papers by year (removing papers missing the full text).**"}
+```{r papersByYear, message=FALSE, warning=FALSE, fig.cap="**Fig. 1: The count of CogSci papers by year (removing papers missing the full text).**"}
 df %>%
   group_by(year) %>%
   summarise(count = n()) %>%
@@ -38,15 +39,28 @@ df %>%
   theme_minimal()
 ```
 
-```{r}
+```{r leadAuths, message=FALSE, warning=FALSE, fig.cap="**Fig. 2: The top 6 most published authors (and our sovereign leader, Sir E Vul) and their proportion of contribution out of all CogSci papers contributed for a given year.**"}
+byAuth <- transform_authorAbbr(df) %>%
+  mutate(author=strsplit(authors, ", ")) %>%
+  unnest(author) %>%
+  select(author, title, year)
+
 topAuth <- authorCounts %>%
-  top_n(10,n) %>%
+  top_n(6,n) %>%
   .$authorAbbr
 
-# df %>%
-#   filter(authors %in% topAuth) %>%
-#   group_by(year) %>%
-  
+byAuth %>%
+  group_by(year, author) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  group_by(year) %>%
+  mutate(prop = count/n()) %>%
+  filter(author %in% topAuth | author == "E Vul") %>%
+  ggplot(aes(x=year, y=prop, colour=author)) +
+  geom_smooth(se=F) +
+  scale_x_continuous(limits=c(1999,2020)) +
+  scale_y_continuous("proportion of papers") +
+  theme_minimal()
 ```
 
 

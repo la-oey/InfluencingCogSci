@@ -24,6 +24,12 @@ author_net_filtered = author_net %>%
   filter(n > 1) %>%
   ungroup()
 
+author_net = author_net %>%
+  group_by(authorAbbr) %>% # NB: authorAbbr gets populated elsewhere
+  summarise(n = n())
+
+write_csv(author_net, "author_net.csv")
+
 centrality_subset = centrality_subset %>% filter(label %in% author_net_filtered$authorAbbr)
 # process topic.df.* for more efficient handling in code below
 
