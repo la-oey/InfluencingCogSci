@@ -82,20 +82,17 @@ centrality = writeAuthorNet(author_net)
 ```
 
 
-```{r centrality grpah}
+```{r centrality grpah  message=FALSE, warning=FALSE, fig.cap="**Fig. ??: Degree centrality has a long tail, and so it must be log transformed for our analysis."}
 centrality %>% 
   filter(CM == 'degree') %>% 
-  inner_join(num_papers,., by = c('authorAbbr' = 'label')) %>%
-  mutate(logCentrality = log(measure)) %>%
   arrange(desc(measure)) %>%
-  select(-id,-CM,-prop) %>%
-  gather(key = quantity, value = value, -authorAbbr,-rank)%>%
-  ggplot(aes(x=reorder(factor(authorAbbr),rank),y=value))+
+  select(-id,-CM) %>%
+  mutate(rank = dense_rank(desc(measure)))%>%
+  ggplot(aes(x=reorder(factor(label),rank),y=measure))+
   geom_bar(stat='identity')+
-  ylim(0,50)+
-    facet_grid(quantity~.)
-
-
+  xlab('Author (ordered by centrality)')+
+  ylab('centrality vlaue' )
+  theme(axis.text.x = element_blank())
 ```
 
 ### Topic Model ###
