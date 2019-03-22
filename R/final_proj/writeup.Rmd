@@ -100,7 +100,7 @@ We used the R package visNetwork to generate a visualization of the co-authorshi
 
 
 | rank | betweenness | closeness | degree |
-|--------|----------------------------------------------------
+|--------|----------|---------|----------|
 | 1 | J Tenenbaum | J Tenenbaum | J Tenenbaum |
 | 2 | T Griffiths | T Griffiths | T Griffiths |
 | 3 | R Goldstone | R Goldstone | N Goodman |
