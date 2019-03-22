@@ -24,7 +24,7 @@ Trends in research interest amongst scientific fields are constantly in flux. Re
 
 To assess the influence of individual authors on the behavior of the scientific community, we construct an undirected, unweighted graph using the authors of papers in our CogSci corpus. In the graph, each individual author is a node and the co-publications between authors define the edges between nodes. This co-authorship network intends to capture the connections between authors and can be used to quantify the influence of individual authors. We compare several graph theoretic measures centrality, which computes the connectedness of individuals within a network, to approximate the “influence” of particular authors. 
 
-To assess changes in research interest in the field, we use a topic model based on the principles of Latent Dirichlet Allocation (LDA, see Figure 4). The introduction of LDA, a generative statistical model for natural language processing, allowed for the efficient discovery and classification of unique topics from large datasets (Blei, Ng, & Jordan, 2003). Subsequent research into topic models has primarily focused on utilizing and improving LDA based models. Griffiths & Steyvers (2004) extended the standard LDA topic model by incorporating document information, and Rosen-Zvi, Griffiths, Steyvers & Smyth (2004) further expanded the model by incorporating author information. This allowed researchers to model papers as sampling from the topic distributions of multiple authors instead of sampling from a simple Dirichlet prior on topic distributions over documents. More recently, variants of topic models have been used to characterize trends in research within the field of cognitive science; however, these models do not attempt to explore any causal drivers of such research trends (Cohen Priva & Austerweil, 2015; Rothe, Rich, & Li, 2018). Our study demonstrates a first-pass attempt at deriving some of the potential causal factors that influence field-wide trends in research interests.
+To assess changes in research interest in the field, we use a topic model based on the principles of Latent Dirichlet Allocation (LDA, see Figure 5). The introduction of LDA, a generative statistical model for natural language processing, allowed for the efficient discovery and classification of unique topics from large datasets (Blei, Ng, & Jordan, 2003). Subsequent research into topic models has primarily focused on utilizing and improving LDA based models. Griffiths & Steyvers (2004) extended the standard LDA topic model by incorporating document information, and Rosen-Zvi, Griffiths, Steyvers & Smyth (2004) further expanded the model by incorporating author information. This allowed researchers to model papers as sampling from the topic distributions of multiple authors instead of sampling from a simple Dirichlet prior on topic distributions over documents. More recently, variants of topic models have been used to characterize trends in research within the field of cognitive science; however, these models do not attempt to explore any causal drivers of such research trends (Cohen Priva & Austerweil, 2015; Rothe, Rich, & Li, 2018). Our study demonstrates a first-pass attempt at deriving some of the potential causal factors that influence field-wide trends in research interests.
 
 Our author graph and topic model form the basis for hypotheses about the relationship between author centrality and changes in topic distribution by authors and the field as a whole. To operationalize these hypotheses, we first calculate vector differences in topic space among authors and the field year over year. We then examine the directionality and magnitude of author topic vectors projected onto field-wide topic vectors and vice versa. The intuition behind this approach is that insofar as the topic distribution of the field follows particularly influential authors, this should be reflected in the directionality changes in the field’s topic vector when compared to the topic vectors for those authors. To our knowledge, this is the first attempt at quantitatively establishing the changes in topic interest of particular authors in relation to the field and vice versa. 
 
@@ -96,9 +96,6 @@ Betweenness centrality (BC) is defined by how many of the shortest paths between
 
 Using our measures of centrality we found the top 10 authors for each of the measures (Table 1). All three measures agree on the top two authors, but differentiate between authors ranked lower, reflecting potential differences in the ways lower ranked authors contribute to the field.
 
-We used the R package visNetwork to generate a visualization of the co-authorship network shown in Figure 3. This illustration reveals a problem with our network, which is the fact of multiple subgraphs surrounding the main graph, making the network disconnected. The CC and BC measures rely on the graph being connected; however, DC is measurable regardless of the node’s connection to the main graph. DC, while unable to connect author islands, accurately reflects an individual’s influence irrespective of them being connected to the primary network - a common failing of the other suggested centrality measures. Therefore, in our final analysis, we only considered DC as the measure of centrality.
-
-
 | rank | betweenness | closeness | degree |
 |--------|----------------------------------------------------
 | 1 | J Tenenbaum | J Tenenbaum | J Tenenbaum |
@@ -113,6 +110,8 @@ We used the R package visNetwork to generate a visualization of the co-authorshi
 | 10 | L Smith | D Gentner | J Hu |
 **Table 1: Top authors by each of the primary centrality rankings**
 
+
+
 ```{r eval = FALSE}
 topic.df.50.processed = suppressWarnings(topic.df.50 %>% transform_authorAbbr())
 
@@ -121,9 +120,9 @@ author_net = suppressWarnings(getAuthorList(topic.df.50.processed))
 centrality = writeAuthorNet(author_net) # NB: this takes a few minutes
 
 ```
+We used the R package visNetwork to generate a visualization of the co-authorship network shown in Figure 3. This illustration reveals a problem with our network, which is the fact of multiple subgraphs surrounding the main graph, making the network disconnected. The CC and BC measures rely on the graph being connected; however, DC is measurable regardless of the node’s connection to the main graph. DC, while unable to connect author islands, accurately reflects an individual’s influence irrespective of them being connected to the primary network - a common failing of the other suggested centrality measures. Therefore, in our final analysis, we only considered DC as the measure of centrality.
 
-
-```{r eval = FALSE, centrality_graph,  message=FALSE, warning=FALSE, fig.cap="**Degree centrality has a long tail, and so it must be log transformed for our analysis."}
+```{r eval = FALSE, centrality_graph,  message=FALSE, warning=FALSE}
 centrality %>% 
   filter(CM == 'degree') %>% 
   arrange(desc(measure)) %>%
@@ -136,14 +135,17 @@ centrality %>%
   theme(axis.text.x = element_blank())
 ```
 
+![**Figure 4: Degree centrality has a long tail, and so it must be log transformed for our analysis.**](centrality_bar.png)
+
+
 ### Topic Model ###
-![**Figure 4: Depiction of the Latent Dirichlet Allocation (LDA) Topic Model.**](lda_graphic.png)
+![**Figure 5: Depiction of the Latent Dirichlet Allocation (LDA) Topic Model.**](lda_graphic.png)
 
 Our hypothesis about the impact of author centrality on the research interest trajectory in the field requires the ability to characterize the research topics that dominate the works of particular authors and the field as a whole. This is accomplished through the use of a topic model fit to the full text of the papers in our corpus, allowing us to map papers and authors into a high dimensional “topic space”. We use the Structural Topic Model (stm) package in R, which provides out-of-the-box tools to implement LDA-based topic models for text documents. More advanced models can be implemented with stm by including covariates such as author(s) or date as part of the generative process for topic and word distributions (Roberts, Steward, & Tingley, 2015). This package is a powerful tool for exploring topic dynamics in our corpus of CogSci papers.
 
-We use the standard topic modeling features of stm (without relying on covariate information) to fit a topic model to our data. The model begins by pre-processing the documents to remove punctuation, stopwords, and numbers, as well as high frequency items. Using the full text from 9,165 CogSci papers (after initial pre-processing) published between 2000 and 2018, with around 20,000 unique lemmas, we fit a topic model with 50 and 100 topics. Qualitative analysis of the most probable words in each topic confirmed that the topic divisions are meaningful (Figure 5). Further quantitative assessment of topic fit is possible through a number of different approaches (see for example Rosen-Zvi et al. 2004) but was not pursued here. Rather, we took the fact that topic divisions separated likely words in a meaningful way as sufficient for exploring the relationship between author centrality and changes in topic distributions year over year. The output of the model is an $n$ Documents by $t$ Topics matrix where each cell $i,j$ is the proportion of topic $j$ in paper $i$ fit by the model. With this, we can position a given paper in topic space or aggregate the topic vectors for a set of papers (e.g. belonging to a particular author or a particular year) for comparison across years. 
+We use the standard topic modeling features of stm (without relying on covariate information) to fit a topic model to our data. The model begins by pre-processing the documents to remove punctuation, stopwords, and numbers, as well as high frequency items. Using the full text from 9,165 CogSci papers (after initial pre-processing) published between 2000 and 2018, with around 20,000 unique lemmas, we fit a topic model with 50 and 100 topics. Qualitative analysis of the most probable words in each topic confirmed that the topic divisions are meaningful (Figure 6). Further quantitative assessment of topic fit is possible through a number of different approaches (see for example Rosen-Zvi et al. 2004) but was not pursued here. Rather, we took the fact that topic divisions separated likely words in a meaningful way as sufficient for exploring the relationship between author centrality and changes in topic distributions year over year. The output of the model is an $n$ Documents by $t$ Topics matrix where each cell $i,j$ is the proportion of topic $j$ in paper $i$ fit by the model. With this, we can position a given paper in topic space or aggregate the topic vectors for a set of papers (e.g. belonging to a particular author or a particular year) for comparison across years. 
 
-![**Figure 5: Four word clouds depicting generated words from 4 topics. Qualitative analysis confirmed that the topic divisions are meaningful.**](word_cloud_aggregated.png)
+![**Figure 6: Four word clouds depicting generated words from 4 topics. Qualitative analysis confirmed that the topic divisions are meaningful.**](word_cloud_aggregated.png)
 
 
 ### Field Dynamics ###
@@ -151,15 +153,16 @@ We were unable to find a well established metric that would allow us to calculat
 
 For each paper in our data set, the topic model outputs a vector of weights on each topic component that define that paper’s position in topic space. Since we are interested in the temporal dynamics of positions in topic space, we aggregate the papers into a global topic vector for each year. We also find an author’s position in topic space in each year by aggregating the topic vectors of their papers in that year (if they have any). This process results in a set of vectors in topic space: one *global topic position vector* for each year, and a set of *author topic position vectors* for each year that the given author published in. 
 
-For each author, we find the difference between their topic position vector in a given year and the global topic position vector. This *global-author topic difference vector* represents how a particular author differs from the field as a whole in a given year  (Figure 6i). A second difference vector is calculated between years to represent changes in the position in topic space, both for the global topic distribution and for an author’s topic distribution. We expect the rate of broad topic interest change in the field to be relatively slow; therefore, we calculate the vector difference every third year (e.g., 2003 topic position vector minus 2000 topic position vector). The change in topic space position is calculated for the field as a whole (*global topic change vector*) (Figure 6ii) and for individual authors (*author topic change vector*) (Figure 6iii). The *global topic change vector* represents how the topics in the field change over time. The *author topic change vector* represents how an author’s interest in different topics changes over time. The *global-author topic difference vectors* and the topic change vectors are used to calculate our dependent measure.
+For each author, we find the difference between their topic position vector in a given year and the global topic position vector. This *global-author topic difference vector* represents how a particular author differs from the field as a whole in a given year  (Figure 7i). A second difference vector is calculated between years to represent changes in the position in topic space, both for the global topic distribution and for an author’s topic distribution. We expect the rate of broad topic interest change in the field to be relatively slow; therefore, we calculate the vector difference every third year (e.g., 2003 topic position vector minus 2000 topic position vector). The change in topic space position is calculated for the field as a whole (*global topic change vector*) (Figure 7ii) and for individual authors (*author topic change vector*) (Figure 7iii). The *global topic change vector* represents how the topics in the field change over time. The *author topic change vector* represents how an author’s interest in different topics changes over time. The *global-author topic difference vectors* and the topic change vectors are used to calculate our dependent measure.
 
-The projection of the *global topic change vector* onto the *global-author topic difference vector* will tell us the amount the field moves along the direction that a particular author differs from the field (Figure 6iv).  This projection can be thought of as how much an author influences the field: does the field move towards or away from the author in topic space and by how much? 
+The projection of the *global topic change vector* onto the *global-author topic difference vector* will tell us the amount the field moves along the direction that a particular author differs from the field (Figure 7iv).  This projection can be thought of as how much an author influences the field: does the field move towards or away from the author in topic space and by how much? 
 
-The projection of the *author topic change vector* onto the *global-author topic difference vector* will tell us the amount the *author* moves along the direction that they differ from the field (Figure 6iv). This projection can be thought of as how much an author is *influenced by* the field: does an author move towards or away from the field in topic space and by how much? 
+The projection of the *author topic change vector* onto the *global-author topic difference vector* will tell us the amount the *author* moves along the direction that they differ from the field (Figure 7iv). This projection can be thought of as how much an author is *influenced by* the field: does an author move towards or away from the field in topic space and by how much? 
 
 We find these two projection vectors in all the years that the author is present and take their average. This produces two measures for each author each year: (1) a representation of the amount the author influences the field and (2) a representation of the amount the field influences the author.  
 
-![**Figure 6: Depiction of how the dependent measure is calculated via vector projection. (i) The *global-author topic difference vector*: how a particular author differs from the field as a whole in a given year (ii) The change in topic space position calculated for the field as a whole (*global topic change vector*) (iii) The change in topic space position calculated for individual authors (*author topic change vector*) (iv) The projection of the *global topic change vector* onto the *global-author topic difference vector*, and the projection of the *author topic change vector* onto the *global-author topic difference vector*.**](dynamics_full.png)
+![**Figure 7: Depiction of how the dependent measure is calculated via vector projection. (i) The *global-author topic difference vector*: how a particular author differs from the field as a whole in a given year (ii) The change in topic space position calculated for the field as a whole (*global topic change vector*) (iii) The change in topic space position calculated for individual authors (*author topic change vector*) (iv) The projection of the *global topic change vector* onto the *global-author topic difference vector*, and the projection of the *author topic change vector* onto the *global-author topic difference vector*.**](dynamics_full.png)
+
 
 ```{r eval = FALSE, get_centrality_subset}
 author_net_filtered = author_net %>%
@@ -171,6 +174,7 @@ author_net_filtered = author_net %>%
 centrality_subset = centralityQuantile(centrality, q = c(0,1)) %>% filter(label %in% author_net_filtered$authorAbbr)
 ```
 
+Before calculating the topic dynamics measure, we removed authors from the data who had only one publication. Our measure depends on change in an author’s topic distribution over multiple years, and cannot be found with a single observation. While the author’s influence on the global projection can still be calculated for authors with only one publication, we chose not to include them so that our correlational measures for *author influence global* and *global influence author* were calculated over the same authors and had the same number of observations. Authors with single publications were still included when calculating our topic model and centrality measures in order to provide maximally accurate topic distribution and centrality information. 
 
 ```{r eval = FALSE, create_sparse_matrices}
 authors = centrality_subset %>%
@@ -215,6 +219,7 @@ for (col in seq(1:dim(year.mat)[2])) { # This takes ~1s
 }
 ```
 
+We use sparse matricies for year and author to facilitate computation.
 
 ```{r eval = FALSE, calculate_dependent_measure}
 global_topic.50 =  topic.df.50 %>% 
@@ -231,24 +236,10 @@ author_influence.50 = centrality_subset %>%
                                               global_topic = global_topic.50))
 ```
 
+This produces the dependent measure which we will further manipulate in the results.
 
 # Results #
 
-Before calculating the topic dynamics measure, we removed authors from the data who had only one publication. Our measure depends on change in an author’s topic distribution over multiple years, and cannot be found with a single observation. While the author’s influence on the global projection can still be calculated for authors with only one publication, we chose not to include them so that our correlational measures for *author influence global* and *global influence author* were calculated over the same authors and had the same number of observations. Authors with single publications were still included when calculating our topic model and centrality measures in order to provide maximally accurate topic distribution and centrality information. 
-
-To test the hypothesis that author centrality is related to changes in topic space across the field, we correlate each author’s log-transformed degree centrality with that author’s *author influence global* projection as well as their *global influence author* projection. These correlations are significantly different from zero for both the author influence global and global influence author projections (r = -0.07041, p = 0.03, r = -0.0831, p = 0.0104), suggesting that increases in an author’s degree centrality relates to changes in the direction of the field relative to that author in topic space. 
-
-Because of the way we calculated our dependent measure, we expect that if the author does not have an influence on the global topic space then the projection of the global change vector will be large and positive. Likewise, if the change in global topic space is in the direction of how the author differs from the field, then the projection of the global change vector will be small and/or negative. Conversely, if the global topic space has an influence on an author, then the projection of the author change vector will be positive such that the author moved towards the global position in topic space, and if the global topic space has no influence on the author then the projection of the author change vector will be negative.
-
-Notably, these correlations are significant for author and global difference vectors calculated on three-year time scales but not for single-year time scales and are not as strong for two-year. Intuitively, this reflects the idea that changes in topic space, particularly for the field as a whole, do not happen instantaneously and to the degree that the work of the field follows particularly influential authors, this likely takes several years. However, future work should provide more quantitative support for this hypothesis.
-
-The measures that we used to find this correlation are unusual so there is reason to believe that a parametric null hypothesis test is inappropriate. We use a randomization approach to generate a null hypothesis to see whether the link between centrality and topic dynamics is actually significantly different than a correlation generated by chance alone. In order to do this we reassigned the co-authors of papers to new paper titles. This shuffling assumption means that the centrality network will remain the same (the co-authorship connections are unbroken) and that the topic model fit also remains the same (the topic model produced estimates for each paper without consideration of the author). We then calculate our contrived measure of topic dynamics on the randomized data. 
-
-Evaluated against the non-parametric null distribution generated using resampling methods described above, the correlation between author centrality and topic change projections remains significant (p = 0.0012 for global influence author projections; p = 0.0003 for author influence global projections). 
-
-![**Figure ??: Lalala.**](null_author_global.png)
-
-![**Figure ??: Lalala.**](null_global_author.png)
 
 ```{r eval = FALSE, Calculate_cor}
 author_influence.cors = data.frame(t(author_influence.50))%>%
@@ -262,16 +253,26 @@ author_influence.cors = data.frame(t(author_influence.50))%>%
 ```
 
 
+To test the hypothesis that author centrality is related to changes in topic space across the field, we correlate each author’s log-transformed degree centrality with that author’s *author influence global* projection as well as their *global influence author* projection. 
+
 ```{r eval = FALSE, cor_test_results}
 cor_test_gia = author_influence.cors$cor.global.influence.author[[1]]
 cor_test_aig = author_influence.cors$cor.author.influence.global[[1]]
 ```
+
+These correlations are significantly different from zero for both the author influence global and global influence author projections (r = -0.07041, p = 0.03, r = -0.0831, p = 0.0104), suggesting that increases in an author’s degree centrality relates to changes in the direction of the field relative to that author in topic space. 
+
+Because of the way we calculated our dependent measure, we expect that if the author does not have an influence on the global topic space then the projection of the global change vector will be large and positive. Likewise, if the change in global topic space is in the direction of how the author differs from the field, then the projection of the global change vector will be small and/or negative. Conversely, if the global topic space has an influence on an author, then the projection of the author change vector will be positive such that the author moved towards the global position in topic space, and if the global topic space has no influence on the author then the projection of the author change vector will be negative.
+
+Notably, these correlations are significant for author and global difference vectors calculated on three-year time scales but not for single-year time scales and are not as strong for two-year. Intuitively, this reflects the idea that changes in topic space, particularly for the field as a whole, do not happen instantaneously and to the degree that the work of the field follows particularly influential authors, this likely takes several years. However, future work should provide more quantitative support for this hypothesis.
 
 
 ```{r eval = FALSE, Null_randomization}
 indx = sample(1:nrow(author.matrix),nrow(author.matrix))
 author.matrix = author.matrix[indx,]
 ```
+
+The measures that we used to find this correlation are unusual so there is reason to believe that a parametric null hypothesis test is inappropriate. We use a randomization approach to generate a null hypothesis to see whether the link between centrality and topic dynamics is actually significantly different than a correlation generated by chance alone. In order to do this we reassigned the co-authors of papers to new paper titles. This shuffling assumption means that the centrality network will remain the same (the co-authorship connections are unbroken) and that the topic model fit also remains the same (the topic model produced estimates for each paper without consideration of the author). We then calculate our contrived measure of topic dynamics on the randomized data. 
 
 ```{r eval = FALSE, NHST}
 cor_val_gia = author_influence.cors$cor.global.influence.author[[1]]$estimate
@@ -284,6 +285,8 @@ pval_aigc = (sum(H0$cor.AIGC.cor>cor_val_aig)+1)/(length(H0$cor.AIGC.cor)+2)
 pval_aigc = (1-pval_aigc)*2
 
 ```
+
+Evaluated against the non-parametric null distribution generated using resampling methods described above, the correlation between author centrality and topic change projections remains significant (p = 0.0012 for global influence author projections; p = 0.0003 for author influence global projections). 
 
 
 ```{r eval = FALSE, NHST_figures}
@@ -309,6 +312,9 @@ H0 %>%
   ggtitle('Null hypothesis for Author influence Global')
 ```
 
+![**Figure 8: Lalala.**](null_author_global.png)
+
+![**Figure 9: Lalala.**](null_global_author.png)
 
 # Discussion #
 To identify how individual authors influence the behavior of the broader scientific community, we generated a topic model and a co-authorship network from two large datasets of empirical papers and abstracts from the proceedings of the annual Cognitive Science Society Conference. We investigated and compared various measures of centrality to determine the prominence of authors in the broader CogSci community. Because the authorship network was a disconnected graph, we implemented degree centrality as our solitary measure of an author’s connectedness. Degree centrality surmounts the difficulty of determining influence in a disconnected graph and is the most computationally tractable of the measures which facilitated our analysis. 
