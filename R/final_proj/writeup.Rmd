@@ -97,7 +97,7 @@ Betweenness centrality (BC) is defined by how many of the shortest paths between
 Using our measures of centrality we found the top 10 authors for each of the measures (Table 1). All three measures agree on the top two authors, but differentiate between authors ranked lower, reflecting potential differences in the ways lower ranked authors contribute to the field.
 
 | rank | betweenness | closeness | degree |
-|--------|----------------------------------------------------
+|--------|----------|---------|----------|
 | 1 | J Tenenbaum | J Tenenbaum | J Tenenbaum |
 | 2 | T Griffiths | T Griffiths | T Griffiths |
 | 3 | R Goldstone | R Goldstone | N Goodman |
