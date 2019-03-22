@@ -312,9 +312,9 @@ H0 %>%
   ggtitle('Null hypothesis for Author influence Global')
 ```
 
-![**Figure 8: Lalala.**](null_author_global.png)
+![**Figure 8: Null distribution for correlation of author influencing global from 6,835 reshuffled samples.**](null_author_global.png)
 
-![**Figure 9: Lalala.**](null_global_author.png)
+![**Figure 9: Null distribution for correlation of global influencing author from 6,835 reshuffled samples.**](null_global_author.png)
 
 # Discussion #
 To identify how individual authors influence the behavior of the broader scientific community, we generated a topic model and a co-authorship network from two large datasets of empirical papers and abstracts from the proceedings of the annual Cognitive Science Society Conference. We investigated and compared various measures of centrality to determine the prominence of authors in the broader CogSci community. Because the authorship network was a disconnected graph, we implemented degree centrality as our solitary measure of an author’s connectedness. Degree centrality surmounts the difficulty of determining influence in a disconnected graph and is the most computationally tractable of the measures which facilitated our analysis. 
@@ -328,7 +328,21 @@ We also found that the global influence on author was much closer to zero than w
 Since we used a novel vector analysis to quantify the relationship between author and global topic space, future work includes performing validation tests on this measure in order to provide an unbiased evaluation of the reliability of this measure. Additionally, one issue with the co-authorship network is that the graph has unweighted connections between authors, which fails to account for how the number of publications between two authors reflects the strength of their relationship. Therefore, future studies should also explore the possibility of integrating weighted graphs in measuring centrality. Finally, to allow for more fine tuned modification and optimization of the topic model fit to this data, we plan to generate and fit our own topic model. A natural question is how much these results generalize to data outside of cognitive science. Future work should examine corpora of research papers from other scientific fields to see if these effects generalize. 
 
 
+# References #
 
+Blei, D., Jordan, M., & Ng, A. Y. (2003). Latent Dirichlet Allocation. *Journal of Machine Learning Research*, 3, 993–1022.
+
+Cohen Priva, U. & Austerweil, J. L. (2015). Analyzing the history of Cognition using Topic Models. *Cognition*, 135, 4-9.
+
+Griffiths, T. L. & Steyvers, M. (2004). Finding scientific topics. *Proceedings of the National Academy of Sciences*, 101(1), 5228-5235.
+
+The igraph core team (2015). Igraph-the network analysis package. Retrieved from https://igraph.org/redirect.html
+
+Roberts, M. E., Stewart, B. M., Tingley, D. (2015). Stm: R Package for Structural Topic Models. Retrieved from cran.r-project.org/web/packages/stm/vignettes/stmVignette.pdf
+
+Rosen-Zvi, M., Griffiths, T., Steyvers, M., & Smyth, P. (2004). Probabilistic author-topic models for information discovery. In *Proceedings of the 2004 ACM SIGKDD International Conference on Knowledge Discovery and Data Mining* - KDD ’04 (p. 306).
+
+Rothe, A., Rich, A. S., & Li, Z.-W. (2018). Topics and Trends in Cognitive Science (2000-2017). In *Proceedings of the 40th Annual Conference of the Cognitive Science Society*, 979–984.
 
 
 
