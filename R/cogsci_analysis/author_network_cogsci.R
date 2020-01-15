@@ -1,7 +1,9 @@
 setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
 library(tidyverse)
 library(igraph)
-byAuthor <- read_csv("cogsci_byAuthor.csv")
+byAuthor <- read_csv("cogsci_byAuthor.csv") %>%
+  distinct() %>%
+  mutate(authorAbbr=ifelse(authorAbbr=="J Tenenbaums", "J Tenenbaum", authorAbbr))
 
 #Need to run Lauren's script before running this one.
 
@@ -47,10 +49,6 @@ edgeList = function(author_net,uniqueEdges = T){
 author_net = byAuthor %>% select(title,authorAbbr,year) %>% unique()
 author_net
 
-head(all_edges)
-filter(all_edges, authorAbbr == "J Tenenbaum") %>%
-  arrange(year)
-
 #removes authors with <n publications
 # n.pubs=5
 # author_net = author_net %>% 
@@ -83,13 +81,14 @@ for(j in unique(author_net$year)){
   author_net_year = author_net %>% filter(year == j) %>% select(title, authorAbbr)
   year_nodes= unique(author_net_year$authorAbbr)
   year_edges = edgeList(author_net_year)
-  
   year_nodes=data.frame(id = 1:length(year_nodes), label = year_nodes)
   write.csv(year_nodes, paste0('networkByYear/nodes_',j,'.csv'))
+  write.csv(year_edges, paste0('networkByYear/edges_',j,'.csv'))
   
   year_edges = apply(year_edges, MARGIN = c(1,2), function(x){return(which(year_nodes[2] == x))})
   year_edges = data.frame(year_edges)
-  write.csv(year_edges, paste0('networkByYear/edges_',j,'.csv'))
+  
+  
   
   graph_edges = c()
   
