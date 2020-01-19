@@ -3,3 +3,4 @@
 *.Rhistory
 R/.Rhistory
 cogsci_papers.csv
+R/cogsci_analysis/topicSimYear/*.csv
