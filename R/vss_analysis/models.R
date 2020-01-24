@@ -1,4 +1,4 @@
-setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
+setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/vss_analysis")
 library(tidyverse)
 library(lme4)
 cogsci_byAuthor = read_csv("../cogsci_vss_nips/cogsci_byAuthor.csv")
@@ -6,7 +6,7 @@ centrality2018 = read_csv("networkByYear/centrality_2018.csv")
 centrality_all = read_csv("networkByYear/centrality_all.csv")
 
 model_data <- data.frame()
-for(i in 1981:2019){
+for(i in 2001:2019){
   subset_data <- read_csv(paste0("topicCoauthMatr/topicCoauth",i,".csv")) %>%
     dplyr::select(-X1)
   model_data <- bind_rows(model_data, subset_data)

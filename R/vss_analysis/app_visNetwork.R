@@ -5,7 +5,7 @@ library(visNetwork)
 library(colorspace)
 library(igraph)
 
-whichYear = "2001" #all for all years
+whichYear = "2019" #all for all years
 
 ui <- fluidPage(
   textInput('textname', label = 'Author:', placeholder = 'E Vul'),
@@ -18,9 +18,10 @@ output = server
 
 server<- function(input,output){
 
-  nodes<- read.csv(paste0('centrality_byYear/nodes_',whichYear,'.csv'))
-  edges<- read.csv(paste0('centrality_byYear/edges_',whichYear,'.csv'))
-  edges$X = NULL
+  nodes<- read.csv(paste0('centrality_byYear/nodes_',whichYear,'.csv')) %>%
+    dplyr::select(-X)
+  edges<- read.csv(paste0('centrality_byYear/edges_',whichYear,'.csv')) %>%
+    dplyr::select(-X)
   
   edges = data.frame(edges)
   edges = apply(edges, MARGIN = c(1,2), function(x){return(which(nodes[2] == x))})
@@ -28,11 +29,12 @@ server<- function(input,output){
   names(nodes) = c('id','label')
   edges = data.frame(edges)
   
-  centrality  = read.csv(paste0('centrality_byYear/centrality_',whichYear,'.csv')) 
+  centrality  = read.csv(paste0('centrality_byYear/centrality_',whichYear,'.csv')) %>%
+    dplyr::select(-X)
   
 
   output$author_network <- renderVisNetwork({
-    nodes = data.frame(centrality) %>% filter(label %in% nodes[,2], CM == input$CM) %>% select(label,measure)%>% inner_join(nodes) %>% arrange(desc(measure)) %>% select(id,label)
+    nodes = data.frame(centrality) %>% filter(label %in% nodes[,2], CM == input$CM) %>% dplyr::select(label,measure)%>% inner_join(nodes) %>% dplyr::arrange(desc(measure)) %>% dplyr::select(id,label)
     
     nodes$color = sequential_hcl(length(nodes$id))
     

@@ -4,16 +4,20 @@ library(tidyverse)
 library(pbapply)
 source('networkCentralityFunctions_cogsci.R')
 
-# DATA_100 = 'fullcogsci_topic_dist_fulltext_100.csv'
-# topic.df = read_csv(DATA_100)
+#DATA_100 = 'fullcogsci_topic_dist_fulltext_100.csv'
 
+# DATA_100 = 'cogsci_topic_dist_fulltext_100_post2000.csv'
+# topic.df = read_csv(DATA_100)
+# 
 # topic.df = transform_authorAbbr(topic.df) #this takes a long time to run so read_csv if possibles
-# write.csv(topic.df, "topics_authorAbbr.csv")
-topic.df <- read_csv("fullcogsci_topics_authorAbbr.csv") %>%
-  select(-"X1") %>%
+# write.csv(topic.df, "cogsci_topics_authorAbbr.csv")
+
+#topic.df <- read_csv("fullcogsci_topics_authorAbbr.csv") %>%
+topic.df <- read_csv("cogsci_topics_authorAbbr.csv") %>%
   distinct() %>%
   mutate(authors=ifelse(grepl(",",authors), gsub(",.*","",authors), authors),
-         authors=ifelse(authors=="J Tenenbaums", "J Tenenbaum", authors)) #manually fixing incorrect author naming
+         authors=ifelse(authors=="J Tenenbaums", "J Tenenbaum", authors)) %>% #manually fixing incorrect author naming
+  select(-X1)
 
 sanitycheck_author_rows <- function(author.lookup, df) {
   author.grep = as.vector(unlist(sapply(author.lookup, function(author.lookup){return(grep(author.lookup, df$authors, value = TRUE))})))
@@ -128,10 +132,19 @@ for(year in ALL.YEARS){
   years.df <- selectYears(year, N.YEARS)
   ALL.AUTHORS = years.df %>%
     group_by(authors) %>%
-    summarise(n = n()) %>%
-    arrange(desc(n)) %>%
+    select(authors) %>%
+    distinct() %>%
+    arrange(authors) %>%
     .$authors
-  full.author <- expand.grid(authorA=ALL.AUTHORS, authorB=ALL.AUTHORS) #repeat data frame for each year
+  auth.matr <- matrix(1,nrow=length(ALL.AUTHORS), ncol=length(ALL.AUTHORS))
+  colnames(auth.matr) <- ALL.AUTHORS
+  auth.matr[upper.tri(auth.matr, diag=TRUE)] <- NA
+  full.author <- auth.matr %>%
+    as.data.frame() %>%
+    gather("authorA","val",1:ncol(.)) %>%
+    mutate(authorB=rep(colnames(auth.matr),length(colnames(auth.matr)))) %>%
+    filter(!is.na(val)) %>%
+    select(-val)
   topicSim.df <- full.author %>%
     mutate(authorsSim = pbmapply(authors_prevTopicSim, authorA, authorB))
   filename = paste0("topicSimYear/cogsci_topicSim_",year,".csv")
@@ -143,4 +156,27 @@ for(year in ALL.YEARS){
 
 
 
-
+N.YEARS = 5
+ALL.YEARS = (min(topic.df$year)+N.YEARS-1):(max(topic.df$year))
+for(year in ALL.YEARS){
+  years.df <- selectYears(year, N.YEARS)
+  ALL.AUTHORS = years.df %>%
+    group_by(authors) %>%
+    select(authors) %>%
+    distinct() %>%
+    arrange(authors) %>%
+    .$authors
+  auth.matr <- matrix(1,nrow=length(ALL.AUTHORS), ncol=length(ALL.AUTHORS))
+  colnames(auth.matr) <- ALL.AUTHORS
+  auth.matr[upper.tri(auth.matr, diag=TRUE)] <- NA
+  full.author <- auth.matr %>%
+    as.data.frame() %>%
+    gather("authorA","val",1:ncol(.)) %>%
+    mutate(authorB=rep(colnames(auth.matr),length(colnames(auth.matr)))) %>%
+    filter(!is.na(val)) %>%
+    select(-val)
+  topicSim.df <- full.author %>%
+    mutate(authorsSim = pbmapply(authors_prevTopicSim, authorA, authorB))
+  filename = paste0("topicSimYear.5/cogsci_topicSim.5_",year,".csv")
+  write_csv(topicSim.df, filename)
+}

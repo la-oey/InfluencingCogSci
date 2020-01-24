@@ -1,28 +1,29 @@
-setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
-fullcogsci_byAuthor = read_csv("cogsci_byAuthor.csv")
-load("cogsci_binary/author_mat_year_cogsci_2018.RData")
-head(author_mat_year)
-full_author_key = unique(cogsci_byAuthor$authorAbbr)
-full_author_key
-
+setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/vss_analysis")
 library(tidyverse)
 library(lme4)
 library(futile.matrix)
+vss_byAuthor = read_csv("vss_byAuthor.csv")
+
+fullauthor_key = unique(vss_byAuthor$authorAbbr)
+fullauthor_key
+length(fullauthor_key)
+
+
 i=1
 coauthor_mats = list()
 topicSims = list()
 
-for(year in 1981:2019){
-  load(paste0("fullcogsci_binary/author_mat_year_fullcogsci_", year,".RData"))
+for(year in 2001:2019){
+  load(paste0("vss_binary/author_mat_year_vss_", year,".RData"))
   coauthor_mats[[i]] = author_mat_year
   names(coauthor_mats[[i]]) <-NULL 
-  topicSims[[i]] = read_csv(paste0("topicSimYear/cogsci_topicSim_", year,".csv"))
+  topicSims[[i]] = read_csv(paste0("topicSimYear/vss_topicSim_", year,".csv"))
   i = i+1
 }
 
 length(topicSims) == length(coauthor_mats)
 
-isSymmetric(coauthor_mats[[39]])
+isSymmetric(coauthor_mats[[1]])
 peek(coauthor_mats[[39]],15)
 
 ### Old Functions ###
@@ -44,20 +45,20 @@ pmax.matr <- function(matr){ #function to make matrix symmetrical (pmax)
 length(topicSims) #should be 20
 
 
-peek(coauthor_mats[[20]], 5)
-head(topicSims[[20]],5)
+peek(coauthor_mats[[1]], 15)
+head(topicSims[[1]],15)
 
 
 
 # sanity check
-cogsci_byAuthor %>%
-  filter(year==2000) %>%
+vss_byAuthor %>%
+  filter(year==2001) %>%
   .$authorAbbr %>%
   unique() %>%
   length()
 topicSims[[1]] %>%
-  filter(authorB == "V Sloutsky") %>%
-  nrow()
+  nrow() %>%
+  sqrt()
 # should be equal for each year
 # sanity check coauthorship matrix
 
@@ -65,17 +66,21 @@ test <- matrix(floor(runif(16, 0, 10)), nrow=4, ncol=4)
 test
 pmax.matr(test)
 
+dim(coauthor_mats[[1]])
+length(author_key)
+
+
 
 # Lauren's attempt to combine topic similarity and publication. 
 # after running this, still need to left_join() with next year's coauthorship network
 
 topic.coauthor.matrices <- list()
-years = 1981:2019
+years = 2001:2019
 
 start <- Sys.time()
 for(i in 1:length(topicSims)){
   print(paste0("year: ",years[i]))
-  author_key = fullcogsci_byAuthor %>% filter(year  == years[i]) %>% pull(authorAbbr) %>% unique()
+  author_key = vss_byAuthor %>% filter(year  == years[i]) %>% pull(authorAbbr) %>% unique()
   
   tempTop <- topicSims[[i]]
   tempTop <- tempTop %>%
@@ -119,7 +124,7 @@ for(i in 1:length(topicSims)){
   print(Sys.time()-start)
 }
 
-head(topic.coauthor.matrices[[38]],15)
+head(topic.coauthor.matrices[[1]],15)
 
 # 
 # # bind dependent measure (whether authors publish together the following year)
