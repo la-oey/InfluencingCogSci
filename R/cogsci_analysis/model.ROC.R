@@ -1,79 +1,61 @@
 setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
 library(tidyverse)
 library(lme4)
+library(car)
+
+model_data <- read_csv("full_model_data.csv") %>%
+  select(-X1)
 
 
-model_data <- read_csv("full_model_data.csv")
-model_data_old <- data.frame()
-for(i in 2000:2019){
-  subset_data <- read_csv(paste0("topicCoauthMatr_old/topicCoauth",i,".csv")) %>%
-    mutate(year=i) %>%
-    dplyr::select(-X1) %>%
-    distinct()
-  model_data_old <- bind_rows(model_data_old, subset_data)
-}
-
-glimpse(model_data)
 # sanity check
 model_data %>%
   filter((authorA == "J Fan" | authorB == "J Fan") & prior_publication == 1)
 
 
 model_data %>%
-  filter(year >= 2000) %>%
-  glimpse()
-glimpse(model_data_old)
-
-model_data %>%
-  group_by(year >= 2000, prior_publication, new_publication) %>%
-  summarise(n=n())
-model_data_old %>%
   group_by(prior_publication, new_publication) %>%
   summarise(n=n())
 
-model_data.check = model_data %>% 
-  filter(year >= 2000) %>%
-  dplyr::select(-X1)
-nrow(model_data.check)
-nrow(model_data_old)
-
-head(model_data.check, 20)
-head(model_data_old, 20)
-
-check <- bind_rows(model_data.check, model_data_old) %>%
-  distinct()
-
-check %>%
-  group_by(authorA, authorB, year) %>%
-  summarise(n=n()) %>%
-  filter(n>1) %>%
-  nrow()
-
-model_data.check %>%
-  mutate(check = mapply(which, ., model_data_old))
-which(model_data.check == model_data_old)
-library(compare)
-comparison <- compare(model_data.check, model_data_old, allowAll=TRUE)
-
-
-data.pre2019 <- model_data_old %>%
-  filter(year>=2000 & year < 2019 & !is.na(prior_publication))
+model_data %>%
+  filter(is.na(prior_publication)) %>%
+  group_by(authorA) %>%
+  summarise(n = n()) %>%
+  dplyr::arrange(desc(n))
 
 data.pre2019 <- model_data %>%
-  filter(year<2000 & !is.na(prior_publication))
+  filter(year < 2019 & !is.na(prior_publication))
 
-# split data 80% = training, 20% = verification for each year
+cor(dplyr::select(data.pre2019, c(authorsSim, prior_publication, new_publication)))
+
+train.m <- glm(new_publication ~ prior_publication + poly(authorsSim,1), data=data.pre2019, family=binomial())
+summary(train.m)
+
+train.m.quad <- glm(new_publication ~ prior_publication + poly(authorsSim,2), data=data.pre2019, family=binomial())
+summary(train.m.quad)
+
+vif(train.m.quad)
+
+anova(train.m, train.m.quad, test='Chisq')
+
+
+
+
+
+
+# split data 90% = training, 10% = verification for each year
 verification_set <- data.pre2019 %>%
   group_by(year) %>%
-  sample_n(floor(.2*n()))
+  sample_n(floor(.1*n()))
 training_set <- data.pre2019 %>%
   anti_join(verification_set)
 
-
-train.m <- glm(new_publication ~ prior_publication + topicSim, data=model_data_old, family=binomial())
+train.m <- glm(new_publication ~ prior_publication + authorsSim, data=training_set, family=binomial())
 summary(train.m)
 
-predict.verif.m <- predict.glm(train.m, newdata=dplyr::select(verification_set,c(prior_publication,topicSim)), family="binomial")
+
+
+
+predict.verif.m <- predict.glm(train.m, newdata=dplyr::select(verification_set,c(prior_publication,authorsSim)), family="binomial")
 logOdds.to.Prob <- function(y){
   exp(y)/(1+exp(y))
 }

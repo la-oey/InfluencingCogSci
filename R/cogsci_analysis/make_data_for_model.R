@@ -1,18 +1,17 @@
 setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
-fullcogsci_byAuthor = read_csv("cogsci_byAuthor.csv")
-load("cogsci_binary/author_mat_year_cogsci_2018.RData")
-head(author_mat_year)
-full_author_key = unique(cogsci_byAuthor$authorAbbr)
-full_author_key
-
 library(tidyverse)
 library(lme4)
 library(futile.matrix)
+#fullcogsci_byAuthor = read_csv("cogsci_byAuthor.csv")
+fullcogsci_byAuthor = read_csv("fullcogsci_byAuthor.csv")
+full_author_key = unique(fullcogsci_byAuthor$authorAbbr)
+full_author_key
+length(full_author_key)
+
 i=1
 coauthor_mats = list()
 topicSims = list()
-
-for(year in 1981:2019){
+for(year in 2000:2019){
   load(paste0("fullcogsci_binary/author_mat_year_fullcogsci_", year,".RData"))
   coauthor_mats[[i]] = author_mat_year
   names(coauthor_mats[[i]]) <-NULL 
@@ -20,10 +19,29 @@ for(year in 1981:2019){
   i = i+1
 }
 
-length(topicSims) == length(coauthor_mats)
 
-isSymmetric(coauthor_mats[[39]])
-peek(coauthor_mats[[39]],15)
+
+
+# check same number of years for both data frames
+length(topicSims) == length(coauthor_mats)
+topicSims[[1]]
+# check same number of unique authors for both data frames
+years=2000:2019
+for(i in 1:length(topicSims)) {
+  tempTopic = topicSims[[i]] %>%
+    gather("ab","author",1:2) %>%
+    pull(author) %>%
+    unique()
+  tempTopic.len = length(tempTopic)
+  tempAuth.len = dim(coauthor_mats[[i]])[1]
+  print(paste(1999+i,":",tempTopic.len == tempAuth.len))
+  if(tempTopic.len != tempAuth.len){
+    tempAuth = fullcogsci_byAuthor %>% filter(year== years[i]) %>% pull(authorAbbr) %>% unique()
+    print(setdiff(tempTopic, tempAuth))
+  }
+}
+
+isSymmetric(coauthor_mats[[1]])
 
 ### Old Functions ###
 makeSym = function(mat){
@@ -39,6 +57,33 @@ pmax.matr <- function(matr){ #function to make matrix symmetrical (pmax)
 }
 
 #################
+
+
+
+checkMatrixMatch <- function(YEAR){
+  temp_1981_2019 <- coauthor_mats[[YEAR-1980]]
+  sub_author_key <- fullcogsci_byAuthor %>%
+    filter(year==YEAR) %>%
+    pull(authorAbbr) %>%
+    unique()
+  length(sub_author_key)
+  colnames(temp_1981_2019) <- sub_author_key
+  rownames(temp_1981_2019) <- sub_author_key
+  
+  temp_2000_2019_full <- coauthor_mats_subset[[YEAR-1999]]
+  colnames(temp_2000_2019_full) <- full_author_key
+  rownames(temp_2000_2019_full) <- full_author_key
+  temp_2000_2019 <- temp_2000_2019_full[sub_author_key, sub_author_key]
+  temp_2000_2019 <- pmax.matr(temp_2000_2019)
+  
+  peek(temp_1981_2019, 10)
+  peek(temp_2000_2019, 10)
+  all.equal(temp_1981_2019, temp_2000_2019)
+}
+
+
+
+
 
 
 length(topicSims) #should be 20
@@ -63,63 +108,41 @@ topicSims[[1]] %>%
 
 test <- matrix(floor(runif(16, 0, 10)), nrow=4, ncol=4)
 test
+
 pmax.matr(test)
 
 
 # Lauren's attempt to combine topic similarity and publication. 
 # after running this, still need to left_join() with next year's coauthorship network
 
-topic.coauthor.matrices <- list()
-years = 1981:2019
 
+
+topic.coauthor.matrices <- list()
+years = 2000:2019
 start <- Sys.time()
+i=1
 for(i in 1:length(topicSims)){
   print(paste0("year: ",years[i]))
-  author_key = fullcogsci_byAuthor %>% filter(year  == years[i]) %>% pull(authorAbbr) %>% unique()
+  author_key = fullcogsci_byAuthor %>% filter(year== years[i]) %>% pull(authorAbbr) %>% unique()
   
-  tempTop <- topicSims[[i]]
-  tempTop <- tempTop %>%
-    spread(authorB, authorsSim) %>%
-    dplyr::select(-authorA) %>%
-    as.matrix()
-  tempTop[upper.tri(tempTop, diag = TRUE)] <- NA #ignore upper triangle
-  #peek(round(tempTop,4),15)
-
+  tempTop.df <- topicSims[[i]]
+  
   tempAuth <- coauthor_mats[[i]]
-  #tempAuth <- pmax.matr(tempAuth)
   colnames(tempAuth) <- author_key
   #peek(tempAuth, 15)
-
-  tempTop.df <- tempTop %>%
-    as.data.frame() %>%
-    gather("authorA","topicSim",1:ncol(.)) %>%
-    mutate(authorB=rep(colnames(tempTop),length(colnames(tempTop))),
-           tempA = ifelse(authorA < authorB, authorA, authorB), #alphabetically first author => authorA
-           tempB = ifelse(authorA > authorB, authorA, authorB), #alphabetically last author => authorB
-           authorA = tempA, 
-           authorB = tempB) %>%
-    dplyr::select(-c(tempA, tempB)) %>%
-    filter(!is.na(topicSim))
+  
   tempAuth.df <- tempAuth %>%
     as.data.frame() %>%
     gather("authorA","prior_publication",1:ncol(.)) %>%
-    mutate(authorB=rep(colnames(tempAuth),length(colnames(tempAuth))),
-           tempA = ifelse(authorA < authorB, authorA, authorB), #alphabetically first author => authorA
-           tempB = ifelse(authorA > authorB, authorA, authorB), #alphabetically last author => authorB
-           authorA = tempA, 
-           authorB = tempB) %>%
-    dplyr::select(-c(tempA, tempB)) %>%
+    mutate(authorB=rep(colnames(tempAuth),length(colnames(tempAuth)))) %>%
     filter(!is.na(prior_publication))
-  tempBoth <- tempTop.df %>%
-    left_join(tempAuth.df, by=c("authorA","authorB")) #this takes the longest
-
-  topic.coauthor.matrices[[i]] <- tempBoth %>%
+  topic.coauthor.matrices[[i]] <- tempTop.df %>%
+    left_join(tempAuth.df, by=c("authorA","authorB")) %>%
     mutate(year=years[i]) %>%
     distinct()
   print(Sys.time()-start)
 }
-
-head(topic.coauthor.matrices[[38]],15)
+topic.coauthor.matrices[[1]]
 
 # 
 # # bind dependent measure (whether authors publish together the following year)
@@ -129,7 +152,7 @@ for(i in 1:(length(topicSims)-1)){
   temp <- topic.coauthor.matrices[[i]]
   temp.next <- topic.coauthor.matrices[[i+1]] %>%
     mutate(new_publication = prior_publication) %>%
-    dplyr::select(-c(prior_publication, topicSim, year))
+    dplyr::select(-c(prior_publication, authorsSim, year))
   temp.tot <- temp %>%
     left_join(temp.next, by=c("authorA","authorB")) %>%
     mutate(new_publication = ifelse(is.na(new_publication), 0, new_publication))
@@ -143,47 +166,8 @@ for(i in 1:length(topicSims)){
 
 
 
-# topic.coauthor.matrices <- list()
-# for(i in 1:20){
-#   printname = paste0("topicCoauthMatr/topicCoauth",(i+1999),".csv")
-#   topic.coauthor.matrices[[i]] <- read_csv(printname) %>%
-#     mutate(year = i+1999,
-#            tempA = ifelse(authorA < authorB, authorA, authorB), #alphabetically first author => authorA
-#            tempB = ifelse(authorA > authorB, authorA, authorB), #alphabetically last author => authorB
-#            authorA = tempA, 
-#            authorB = tempB) %>%
-#     dplyr::select(-c(X1, tempA, tempB))
-# }
-# length(topic.coauthor.matrices)
-# head(topic.coauthor.matrices[[1]], 20)
-# head(topic.coauthor.matrices[[2]], 20)
-# 
-# temp1 <- topic.coauthor.matrices[[1]] %>%
-#   select(-c(new_publication, year, topicSim))
-# temp2 <- topic.coauthor.matrices[[2]]
-# temp.final <- full_join(temp2, temp1, by=c('authorA','authorB'), suffix=c(".2001",".2000"))
-# 
-# head(temp.final,20)
 
-topic.coauthor.matrices.span <- list()
-# data for model with multiple years in independent measure
-N.YEARS = 5
-YEAR.SPAN = N.YEARS:19
-for(i in YEAR.SPAN){
-  full_temp <- topic.coauthor.matrices[[i]]
-  for(j in 1:(N.YEARS-1)){
-    year.temp = (i+1999)-j
-    temp <- topic.coauthor.matrices[[i-j]] %>%
-      dplyr::select(-c(new_publication, year, topicSim))
-    full_temp <- full_join(full_temp, temp, by=c('authorA','authorB'), suffix=c("",paste0(".",toString(year.temp))))
-  }
-  topic.coauthor.matrices.span[[i-(N.YEARS-1)]] <- full_temp
-}
 
-for(i in 1:length(topic.coauthor.matrices.span)){
-  printname = paste0("topicCoauthMatrSpan/topicCoauthSpan",(i+2003),".csv")
-  write.csv(topic.coauthor.matrices.span[[i]], printname)
-}
 
 
 
@@ -226,3 +210,61 @@ for(i in 1:length(topic.coauthor.matrices.span)){
 # 
 # head(model_data_diffAuthors)
 # glm(model_data_diffAuthors, aes(new_publication ~ prior_publication + topic_similarity, family="binomial"))
+
+
+
+
+
+# old version when topic matrix was symmetrical
+#author_key = full_author_key
+# topic.coauthor.matrices <- list()
+# years = 2000:2019
+# start <- Sys.time()
+# i=1
+# for(i in 1:length(topicSims)){
+#   print(paste0("year: ",years[i]))
+#   author_key = fullcogsci_byAuthor %>% filter(year== years[i]) %>% pull(authorAbbr) %>% unique()
+#   
+#   tempTop <- topicSims[[i]]
+#   tempTop <- tempTop %>%
+#     spread(authorB, authorsSim) %>%
+#     dplyr::select(-authorA) %>%
+#     as.matrix()
+#   #tempTop[upper.tri(tempTop, diag = TRUE)] <- NA #ignore upper triangle
+#   #peek(round(tempTop,4),15)
+# 
+#   tempAuth <- coauthor_mats[[i]]
+#   #tempAuth <- pmax.matr(tempAuth)
+#   colnames(tempAuth) <- author_key
+#   #peek(tempAuth, 15)
+# 
+#   tempTop.df <- tempTop %>%
+#     as.data.frame() %>%
+#     gather("authorA","topicSim",1:ncol(.)) %>%
+#     mutate(authorB=rep(colnames(tempTop),length(colnames(tempTop)))) %>%
+#     # mutate(authorB=rep(colnames(tempTop),length(colnames(tempTop))),
+#     #        tempA = ifelse(authorA < authorB, authorA, authorB), #alphabetically first author => authorA
+#     #        tempB = ifelse(authorA > authorB, authorA, authorB), #alphabetically last author => authorB
+#     #        authorA = tempA, 
+#     #        authorB = tempB) %>%
+#     # dplyr::select(-c(tempA, tempB)) %>%
+#     filter(!is.na(topicSim))
+#   tempAuth.df <- tempAuth %>%
+#     as.data.frame() %>%
+#     gather("authorA","prior_publication",1:ncol(.)) %>%
+#     mutate(authorB=rep(colnames(tempAuth),length(colnames(tempAuth)))) %>%
+#     # mutate(authorB=rep(colnames(tempAuth),length(colnames(tempAuth))),
+#     #        tempA = ifelse(authorA < authorB, authorA, authorB), #alphabetically first author => authorA
+#     #        tempB = ifelse(authorA > authorB, authorA, authorB), #alphabetically last author => authorB
+#     #        authorA = tempA, 
+#     #        authorB = tempB) %>%
+#     # dplyr::select(-c(tempA, tempB)) %>%
+#     filter(!is.na(prior_publication))
+#   tempBoth <- tempTop.df %>%
+#     left_join(tempAuth.df, by=c("authorA","authorB")) #this takes the longest
+# 
+#   topic.coauthor.matrices[[i]] <- tempBoth %>%
+#     mutate(year=years[i]) %>%
+#     distinct()
+#   print(Sys.time()-start)
+# }

@@ -6,16 +6,21 @@ centrality2018 = read_csv("networkByYear/centrality_2018.csv")
 centrality_all = read_csv("networkByYear/centrality_all.csv")
 
 model_data <- data.frame()
-for(i in 1981:2019){
+for(i in 2000:2019){
   subset_data <- read_csv(paste0("topicCoauthMatr/topicCoauth",i,".csv")) %>%
-    dplyr::select(-X1)
+    mutate(topicSim = authorsSim) %>%
+    dplyr::select(-c(X1, authorsSim))
   model_data <- bind_rows(model_data, subset_data)
 }
-write.csv(model_data, "full_model_data.csv")
+write_csv(model_data, "full_model_data.csv")
+
 
 glimpse(model_data)
 model_data %>%
   filter((authorA == "J Fan" | authorB == "J Fan") & prior_publication == 1)
+
+model_data %>%
+  filter(authorA == "J Fan" & authorB == "J Fan")
 
 nrow(model_data)
 model_data %>%
@@ -25,6 +30,7 @@ model_data %>%
   dplyr::arrange(desc(n)) # some authors missing from coauthorship matrix
 
 model_data %>%
+  filter(year==2017) %>%
   filter(!is.na(prior_publication) & !is.na(new_publication)) %>%
   ggplot(aes(x=as.factor(new_publication), y=topicSim)) +
   geom_violin() +
@@ -34,9 +40,11 @@ ggsave("img/coauthor_violin.png")
 
 # model with 1 previous year
 df <- model_data %>%
-  filter(year < 2018) %>%
-  dplyr::select(-X1)
+  mutate(log.topicSim = -log(pi/2-topicSim))
+  #filter(year < 2018)
+head(df)
 glimpse(df)
+plot(df$log.topicSim)
 m <- glm(new_publication ~ prior_publication + topicSim, data=df, family=binomial())
 summary(m)
 
