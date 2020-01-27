@@ -19,9 +19,6 @@ glimpse(model_data)
 model_data %>%
   filter((authorA == "J Fan" | authorB == "J Fan") & prior_publication == 1)
 
-model_data %>%
-  filter(authorA == "J Fan" & authorB == "J Fan")
-
 nrow(model_data)
 model_data %>%
   filter(is.na(prior_publication)) %>%
@@ -29,29 +26,17 @@ model_data %>%
   summarise(n=n()) %>%
   dplyr::arrange(desc(n)) # some authors missing from coauthorship matrix
 
-model_data %>%
-  filter(year==2017) %>%
-  filter(!is.na(prior_publication) & !is.na(new_publication)) %>%
-  ggplot(aes(x=as.factor(new_publication), y=topicSim)) +
-  geom_violin() +
-  coord_flip() +
-  facet_grid(prior_publication~.)
-ggsave("img/coauthor_violin.png")
 
-# model with 1 previous year
-df <- model_data %>%
-  mutate(log.topicSim = -log(pi/2-topicSim))
-  #filter(year < 2018)
-head(df)
-glimpse(df)
-plot(df$log.topicSim)
-m <- glm(new_publication ~ prior_publication + topicSim, data=df, family=binomial())
+m.quad <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=data.pre2019, family=binomial())
+summary(m.quad)
+
+m <- glm(new_publication ~ prior_publication + poly(topicSim,1), data=df, family=binomial())
 summary(m)
 
 m.base <- glm(new_publication ~ prior_publication, data=df, family=binomial())
 summary(m.base)
 
-anova(m.base, m,test='Chisq')
+anova(m.quad, m.base,test='Chisq')
 
 ## predict 2019
 pred2018.df <- model_data %>%

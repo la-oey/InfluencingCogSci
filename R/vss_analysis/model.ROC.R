@@ -3,27 +3,35 @@ library(tidyverse)
 library(lme4)
 
 
-model_data <- read_csv("full_model_data.csv")
+model_data <- read_csv("full_model_data.csv") %>%
+  select(-X1)
 
 glimpse(model_data)
 # sanity check
 model_data %>%
-  filter((authorA == "J Fan" | authorB == "J Fan") & prior_publication == 1)
+  filter((authorA == "T Brady" | authorB == "T Brady") & prior_publication == 1)
 
+model_data %>%
+  filter((authorA == "T Brady" | authorB == "T Brady") & topicSim == 0)
 
 data.pre2019 <- model_data %>%
   filter(year<2019 & !is.na(prior_publication))
 
-# split data 80% = training, 20% = verification for each year
+
+
+# split data 90% = training, 10% = verification for each year
 verification_set <- data.pre2019 %>%
   group_by(year) %>%
-  sample_n(floor(.2*n()))
+  sample_n(floor(.1*n()))
 training_set <- data.pre2019 %>%
   anti_join(verification_set)
 
 
 train.m <- glm(new_publication ~ prior_publication + topicSim, data=training_set, family=binomial())
 summary(train.m)
+
+train.m.quad <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=training_set, family=binomial())
+summary(train.m.quad)
 
 predict.verif.m <- predict.glm(train.m, newdata=dplyr::select(verification_set,c(prior_publication,topicSim)), family="binomial")
 logOdds.to.Prob <- function(y){
