@@ -51,6 +51,9 @@ for(a in 1:length(coauthor_mats)){
   print(Sys.time()-start)
 }
 
+for(a in 1:length(neighbor_mats)){
+  saveRDS(neighbor_mats[[a]], file=paste0("neighbors/neighbors_",years[a],".rds"))
+}
 
 
 
