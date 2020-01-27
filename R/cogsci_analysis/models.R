@@ -1,7 +1,7 @@
 setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
 library(tidyverse)
 library(lme4)
-cogsci_byAuthor = read_csv("../cogsci_vss_nips/cogsci_byAuthor.csv")
+cogsci_byAuthor = read_csv("cogsci_byAuthor.csv")
 centrality2018 = read_csv("networkByYear/centrality_2018.csv")
 centrality_all = read_csv("networkByYear/centrality_all.csv")
 
@@ -15,6 +15,8 @@ for(i in 2000:2019){
 write_csv(model_data, "full_model_data.csv")
 
 
+
+
 glimpse(model_data)
 model_data %>%
   filter((authorA == "J Fan" | authorB == "J Fan") & prior_publication == 1)
@@ -25,6 +27,9 @@ model_data %>%
   group_by(authorA) %>%
   summarise(n=n()) %>%
   dplyr::arrange(desc(n)) # some authors missing from coauthorship matrix
+
+data.pre2019 <- model_data %>%
+  filter(year < 2019)
 
 
 m.quad <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=data.pre2019, family=binomial())
@@ -39,109 +44,154 @@ summary(m.base)
 anova(m.quad, m.base,test='Chisq')
 
 ## predict 2019
-pred2018.df <- model_data %>%
-  filter(year == 2018)
-predict.m <- predict.glm(m, newdata=dplyr::select(pred2018.df,c(prior_publication,topicSim)), family="binomial")
+pred2019.df <- model_data %>%
+  filter(year == 2019)
+predict.m <- predict.glm(m, newdata=dplyr::select(pred2019.df,c(prior_publication,topicSim)), family="binomial")
 logOdds.to.Prob <- function(y){
   exp(y)/(1+exp(y))
 }
 pred2018.df$new_publication <- logOdds.to.Prob(predict.m)
 
 write.csv(pred2019.df, "model_prediction.csv")
-pred2018.df <- read_csv("model_prediction.csv")
-head(pred2018.df)
 
 
 
 
 
-# subset of 2018 authors
-multAuthors <- cogsci_byAuthor %>%
-  filter(year >= 2015) %>%
-  group_by(authorAbbr) %>%
-  summarise(n = n()) %>%
-  filter(n > 1) %>%
-  .$authorAbbr
-centrality2018 <- centrality2018 %>%
-  mutate(CM = as.factor(CM))
-central <- centrality2018 %>%
-  filter(CM=="eigen" & label %in% multAuthors) %>%
-  dplyr::arrange(desc(measure)) %>%
-  top_n(100, measure) %>%
-  dplyr::arrange(label) %>%
-  mutate(index=1:nrow(.))
-centralA <- central %>%
-  mutate(authorA = label,
-         indexA = index) %>%
-  dplyr::select(c(authorA, indexA))
-centralB <- central %>%
-  mutate(authorB = label,
-         indexB = index) %>%
-  dplyr::select(c(authorB, indexB))
-head(central)
-head(pred2018.df)
+# # subset of 2018 authors
+# multAuthors <- cogsci_byAuthor %>%
+#   filter(year >= 2015) %>%
+#   group_by(authorAbbr) %>%
+#   summarise(n = n()) %>%
+#   filter(n > 1) %>%
+#   .$authorAbbr
+# centrality2018 <- centrality2018 %>%
+#   mutate(CM = as.factor(CM))
+# central <- centrality2018 %>%
+#   filter(CM=="eigen" & label %in% multAuthors) %>%
+#   dplyr::arrange(desc(measure)) %>%
+#   top_n(100, measure) %>%
+#   dplyr::arrange(label) %>%
+#   mutate(index=1:nrow(.))
+# centralA <- central %>%
+#   mutate(authorA = label,
+#          indexA = index) %>%
+#   dplyr::select(c(authorA, indexA))
+# centralB <- central %>%
+#   mutate(authorB = label,
+#          indexB = index) %>%
+#   dplyr::select(c(authorB, indexB))
+# head(central)
+# head(pred2018.df)
+# 
+# pred2018.df %>%
+#   filter(authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
+#   left_join(centralA, by=c("authorA")) %>%
+#   left_join(centralB, by=c("authorB")) %>%
+#   ggplot(aes(x=authorB, y=authorA, fill=prior_publication)) +
+#   geom_raster() +
+#   ggtitle("Observed 2018 Co-authorships") +
+#   scale_x_discrete("") +
+#   scale_y_discrete("") +
+#   theme(text = element_text(size=7),
+#         axis.text.x = element_text(angle=45, hjust=1),
+#         legend.position="none")
+# ggsave("img/coauthorship.matr/observed2018.png", height=9, width=8.9)
+#   
+# # 2019 prediction from model
+# pred2018.df %>%
+#   filter(authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
+#   left_join(centralA, by=c("authorA")) %>%
+#   left_join(centralB, by=c("authorB")) %>%
+#   mutate(likely = ifelse(new_publication > 1/2003, "likely","unlikely")) %>%
+#   ggplot(aes(x=authorB, y=authorA, fill=likely)) +
+#   geom_raster() +
+#   ggtitle("Predicted 2019 Co-authorships") +
+#   scale_x_discrete("") +
+#   scale_y_discrete("") +
+#   theme(text = element_text(size=7),
+#         axis.text.x = element_text(angle=45, hjust=1))
+# ggsave("img/coauthorship.matr/predicted2019_bin.png", height=9, width=8.9)
+# 
+# # actual 2019 co-authorship
+# publishedAgain <- model_data %>%
+#   filter(year == 2019 & authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
+#   .$authorA %>%
+#   unique() %>%
+#   length()
+# 
+# model_data %>%
+#   filter(year == 2019 & authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
+#   left_join(centralA, by=c("authorA")) %>%
+#   left_join(centralB, by=c("authorB")) %>%
+#   ggplot(aes(x=authorB, y=authorA, fill=prior_publication)) +
+#   geom_raster() +
+#   ggtitle(paste0("Actual 2019 Co-authorships (", publishedAgain, " of 100 authors)")) +
+#   scale_x_discrete("") +
+#   scale_y_discrete("") +
+#   theme(text = element_text(size=7),
+#         axis.text.x = element_text(angle=45, hjust=1),
+#         legend.position="none")
+# ggsave("img/coauthorship.matr/actual2019.png", height=9, width=8.9)
 
-pred2018.df %>%
-  filter(authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
-  left_join(centralA, by=c("authorA")) %>%
-  left_join(centralB, by=c("authorB")) %>%
-  ggplot(aes(x=authorB, y=authorA, fill=prior_publication)) +
-  geom_raster() +
-  ggtitle("Observed 2018 Co-authorships") +
-  scale_x_discrete("") +
-  scale_y_discrete("") +
-  theme(text = element_text(size=7),
-        axis.text.x = element_text(angle=45, hjust=1),
-        legend.position="none")
-ggsave("img/coauthorship.matr/observed2018.png", height=9, width=8.9)
-  
-# 2019 prediction from model
-pred2018.df %>%
-  filter(authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
-  left_join(centralA, by=c("authorA")) %>%
-  left_join(centralB, by=c("authorB")) %>%
-  mutate(likely = ifelse(new_publication > 1/2003, "likely","unlikely")) %>%
-  ggplot(aes(x=authorB, y=authorA, fill=likely)) +
-  geom_raster() +
-  ggtitle("Predicted 2019 Co-authorships") +
-  scale_x_discrete("") +
-  scale_y_discrete("") +
-  theme(text = element_text(size=7),
-        axis.text.x = element_text(angle=45, hjust=1))
-ggsave("img/coauthorship.matr/predicted2019_bin.png", height=9, width=8.9)
-
-# actual 2019 co-authorship
-publishedAgain <- model_data %>%
-  filter(year == 2019 & authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
-  .$authorA %>%
-  unique() %>%
-  length()
-
-model_data %>%
-  filter(year == 2019 & authorA %in% centralA$authorA & authorB %in% centralB$authorB) %>%
-  left_join(centralA, by=c("authorA")) %>%
-  left_join(centralB, by=c("authorB")) %>%
-  ggplot(aes(x=authorB, y=authorA, fill=prior_publication)) +
-  geom_raster() +
-  ggtitle(paste0("Actual 2019 Co-authorships (", publishedAgain, " of 100 authors)")) +
-  scale_x_discrete("") +
-  scale_y_discrete("") +
-  theme(text = element_text(size=7),
-        axis.text.x = element_text(angle=45, hjust=1),
-        legend.position="none")
-ggsave("img/coauthorship.matr/actual2019.png", height=9, width=8.9)
 
 
 
-pred2019.df %>%
-  filter(!is.na(prior_publication)) %>%
-  group_by(prior_publication) %>%
-  summarise(n=n()) %>%
-  ungroup() %>%
-  mutate(proportion = n/sum(n))
-ggplot(pred2019.df, aes(x=new_publication, fill=prior_publication)) +
-  geom_density() 
-(quants <- quantile(pred2019.df$new_publication, c(.025,.25,.5,.75,.95,.80,.975,.998,.999096), na.rm=TRUE))
-topPred <- pred2019.df %>%
-  filter(new_publication > quants[['80%']])
+
+
+#### Model data with 5 years ####################
+
+
+model_data.5 <- data.frame()
+for(i in 2004:2019){
+  subset_data <- read_csv(paste0("topicCoauthMatr.5/topicCoauth",i,".5.csv"), 
+                          col_types = cols(prior_publication_minus1=col_number(),
+                                           prior_publication_minus2=col_number(),
+                                           prior_publication_minus3=col_number(),
+                                           prior_publication_minus4=col_number(),
+                                           prior_publication_minus5=col_number())) %>%
+    mutate(prior_publication_minus2=ifelse(is.na(prior_publication_minus2), 0, prior_publication_minus2),
+           prior_publication_minus3=ifelse(is.na(prior_publication_minus3), 0, prior_publication_minus3),
+           prior_publication_minus4=ifelse(is.na(prior_publication_minus4), 0, prior_publication_minus4),
+           prior_publication_minus5=ifelse(is.na(prior_publication_minus5), 0, prior_publication_minus5)) %>%
+    dplyr::select(-c(X1))
+  model_data.5 <- bind_rows(model_data.5, subset_data)
+}
+write_csv(model_data.5, "full_model_data.5.csv")
+
+model_data.5 %>%
+  filter((authorA == "N Goodman" | authorB == "N Goodman") & prior_publication_minus1 == 1)
+
+
+data.pre2019.5 <- model_data.5 %>%
+  filter(year < 2019 & !is.na(topicSim) & 
+           !is.na(prior_publication_minus1) & !is.na(prior_publication_minus2) &
+           !is.na(prior_publication_minus3) & !is.na(prior_publication_minus4) &
+           !is.na(prior_publication_minus5))
+head(data.pre2019.5)
+
+
+data.pre2019.5 %>%
+  filter(prior_publication_minus1 == 1) %>%
+  head(10)
+
+
+round(cor(dplyr::select(data.pre2019.5, c(prior_publication_minus1, prior_publication_minus2, 
+                                    prior_publication_minus3, prior_publication_minus4, 
+                                    prior_publication_minus5, topicSim, new_publication))),4)
+
+m5.quad <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                 prior_publication_minus3 + prior_publication_minus4 +
+                 prior_publication_minus5 + poly(topicSim,2), data=data.pre2019.5, family=binomial())
+summary(m5.quad)
+
+
+m5.line <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                 prior_publication_minus3 + prior_publication_minus4 +
+                 prior_publication_minus5 + poly(topicSim,1), data=data.pre2019.5, family=binomial())
+summary(m5.line)
+
+anova(m5.line, m5.quad, test='Chisq')
+
+data.frame(summary(m5.quad)$coeff)
 

@@ -7,6 +7,15 @@ model_data <- read_csv("full_model_data.csv") %>%
   select(-X1)
 
 
+#### FUNCTIONS ####
+
+logOdds.to.Prob <- function(y){
+  exp(y)/(1+exp(y))
+}
+
+###################
+
+
 # sanity check
 model_data %>%
   filter((authorA == "J Fan" | authorB == "J Fan") & prior_publication == 1)
@@ -25,18 +34,20 @@ model_data %>%
 data.pre2019 <- model_data %>%
   filter(year < 2019 & !is.na(prior_publication))
 
-cor(dplyr::select(data.pre2019, c(authorsSim, prior_publication, new_publication)))
+cor(dplyr::select(data.pre2019, c(topicSim, prior_publication, new_publication)))
 
-train.m <- glm(new_publication ~ prior_publication + poly(authorsSim,1), data=data.pre2019, family=binomial())
-summary(train.m)
+m.base <- glm(new_publication ~ prior_publication, data=data.pre2019, family=binomial())
+summary(m.base)
 
-train.m.quad <- glm(new_publication ~ prior_publication + poly(authorsSim,2), data=data.pre2019, family=binomial())
-summary(train.m.quad)
+m <- glm(new_publication ~ prior_publication + poly(topicSim,1), data=data.pre2019, family=binomial())
+summary(m)
 
-vif(train.m.quad)
+m.quad <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=data.pre2019, family=binomial())
+summary(m.quad)
 
-anova(train.m, train.m.quad, test='Chisq')
-
+anova(m.base, m, test='Chisq')
+anova(m, m.quad, test='Chisq')
+anova(m.base, m.quad, test='Chisq')
 
 
 
@@ -49,20 +60,19 @@ verification_set <- data.pre2019 %>%
 training_set <- data.pre2019 %>%
   anti_join(verification_set)
 
-train.m <- glm(new_publication ~ prior_publication + authorsSim, data=training_set, family=binomial())
+train.m <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=training_set, family=binomial())
 summary(train.m)
 
-
-
-
-predict.verif.m <- predict.glm(train.m, newdata=dplyr::select(verification_set,c(prior_publication,authorsSim)), family="binomial")
-logOdds.to.Prob <- function(y){
-  exp(y)/(1+exp(y))
-}
+predict.verif.m <- predict.glm(train.m, newdata=dplyr::select(verification_set,c(prior_publication,topicSim)), family="binomial")
 verification_set$predicted_new <- logOdds.to.Prob(predict.verif.m)
-
 (quants <- quantile(verification_set$predicted_new, c(.25,.5,.75,.8,.85,.9,.95,.975,.998,.999096), na.rm=TRUE))
 
+# train.m.base <- glm(new_publication ~ prior_publication, data=training_set, family=binomial())
+# summary(train.m.base)
+
+# predict.verif.m <- predict.glm(train.m.base, newdata=dplyr::select(verification_set,c(prior_publication)), family="binomial")
+# verification_set$predicted_new <- logOdds.to.Prob(predict.verif.m)
+# (quants <- quantile(verification_set$predicted_new, c(.25,.5,.75,.8,.85,.9,.95,.975,.998,.999096), na.rm=TRUE))
 
 
 all.accuracy <- data.frame()
@@ -103,3 +113,77 @@ ggplot(all_accuracy, aes(x=false.alarm.perc, y=hit.perc)) +
   scale_x_continuous(limits=c(0,1)) +
   scale_y_continuous(limits=c(0,1))
 ggsave("img/ROCcurve.png")
+
+
+
+
+#### Model data w/ 5 years of coauthorships ####
+
+model_data.5 <- read_csv("full_model_data.5.csv") %>%
+  select(-X1)
+
+data.pre2019.5 <- model_data.5 %>%
+  filter(year < 2019 & !is.na(topicSim) & 
+           !is.na(prior_publication_minus1) & !is.na(prior_publication_minus2) &
+           !is.na(prior_publication_minus3) & !is.na(prior_publication_minus4) &
+           !is.na(prior_publication_minus5))
+
+# split data 90% = training, 10% = verification for each year
+verification_set <- data.pre2019.5 %>%
+  group_by(year) %>%
+  sample_n(floor(.1*n()))
+training_set <- data.pre2019.5 %>%
+  anti_join(verification_set)
+
+m5.train.quad <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                 prior_publication_minus3 + prior_publication_minus4 +
+                 prior_publication_minus5 + poly(topicSim,2), data=training_set, family=binomial())
+summary(m5.train.quad)
+
+predict.verif.m5 <- predict.glm(m5.train.quad, 
+                               newdata=dplyr::select(verification_set,
+                                                     c(prior_publication_minus1,
+                                                       prior_publication_minus2,
+                                                       prior_publication_minus3,
+                                                       prior_publication_minus4,
+                                                       prior_publication_minus5,
+                                                       topicSim)), 
+                               family="binomial")
+verification_set$predicted_new <- logOdds.to.Prob(predict.verif.m5)
+(quants <- quantile(verification_set$predicted_new, c(.25,.5,.75,.8,.85,.9,.95,.975,.998,.999096), na.rm=TRUE))
+
+all.accuracy <- data.frame()
+for(i in 1:length(quants)){
+  THRESHOLD <- quants[[i]]
+  temp.accuracy <- verification_set %>%
+    mutate(predictAcc = case_when(
+      predicted_new >= THRESHOLD & new_publication==1 ~ "HIT",
+      predicted_new >= THRESHOLD & new_publication==0 ~ "FALSE ALARM",
+      predicted_new < THRESHOLD & new_publication==1 ~ "MISS",
+      predicted_new < THRESHOLD & new_publication==0 ~ "CORRECT REJECTION"
+    )) %>%
+    group_by(predictAcc) %>%
+    summarise(n=n())
+  all.accuracy <- bind_rows(all.accuracy, data.frame(threshold=THRESHOLD,
+                                                     hit=temp.accuracy$n[3],
+                                                     false.alarm=temp.accuracy$n[2],
+                                                     miss=temp.accuracy$n[4],
+                                                     correct.rejection=temp.accuracy$n[1]))
+}
+
+maxAcc <- verification_set %>%
+  group_by(new_publication) %>%
+  summarise(n=n())
+
+all_accuracy <- all.accuracy %>%
+  mutate(false.alarm.perc = false.alarm / filter(maxAcc,new_publication==0)$n,
+         hit.perc = hit / filter(maxAcc,new_publication==1)$n,
+         dprime = qnorm(hit.perc) - qnorm(false.alarm.perc))
+all_accuracy
+
+ggplot(all_accuracy, aes(x=false.alarm.perc, y=hit.perc)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, colour="forestgreen", linetype=2) +
+  ggtitle("ROC Curve") +
+  scale_x_continuous(limits=c(0,1)) +
+  scale_y_continuous(limits=c(0,1))
