@@ -1,7 +1,8 @@
 setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
 library(tidyverse)
 library(lme4)
-library(car)
+library(car) #VIF
+library(arm) #binned residual plot
 
 model_data <- read_csv("full_model_data.csv") %>%
   select(-X1)
@@ -32,22 +33,23 @@ model_data %>%
   dplyr::arrange(desc(n))
 
 data.pre2019 <- model_data %>%
-  filter(year < 2019 & !is.na(prior_publication))
+  filter(year < 2019 & !is.na(prior_publication)) %>%
+  #mutate(logTopicSim = log(topicSim+0.0000001))
+  mutate(logTopicSim = -log(pi/2-topicSim))
 
 cor(dplyr::select(data.pre2019, c(topicSim, prior_publication, new_publication)))
 
 m.base <- glm(new_publication ~ prior_publication, data=data.pre2019, family=binomial())
 summary(m.base)
 
-m <- glm(new_publication ~ prior_publication + poly(topicSim,1), data=data.pre2019, family=binomial())
+m <- glm(new_publication ~ prior_publication + topicSim, data=data.pre2019, family=binomial())
 summary(m)
 
-m.quad <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=data.pre2019, family=binomial())
-summary(m.quad)
+m.log <- glm(new_publication ~ prior_publication + logTopicSim, data=data.pre2019, family=binomial())
+summary(m.log)
 
-anova(m.base, m, test='Chisq')
-anova(m, m.quad, test='Chisq')
-anova(m.base, m.quad, test='Chisq')
+anova(m.base, m.log, test='Chisq')
+
 
 
 
@@ -60,20 +62,48 @@ verification_set <- data.pre2019 %>%
 training_set <- data.pre2019 %>%
   anti_join(verification_set)
 
-train.m <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=training_set, family=binomial())
-summary(train.m)
 
-predict.verif.m <- predict.glm(train.m, newdata=dplyr::select(verification_set,c(prior_publication,topicSim)), family="binomial")
-verification_set$predicted_new <- logOdds.to.Prob(predict.verif.m)
-(quants <- quantile(verification_set$predicted_new, c(.25,.5,.75,.8,.85,.9,.95,.975,.998,.999096), na.rm=TRUE))
+train.m.line.log <- glm(new_publication ~ prior_publication + logTopicSim, data=training_set, family=binomial())
+summary(train.m.line.log)
 
+# train.m.line <- glm(new_publication ~ prior_publication + topicSim, data=training_set, family=binomial())
+# summary(train.m.line)
+# 
 # train.m.base <- glm(new_publication ~ prior_publication, data=training_set, family=binomial())
 # summary(train.m.base)
+# 
+# predict.verif.m.line <- predict.glm(train.m.line, newdata=dplyr::select(training_set,c(prior_publication,topicSim)), family="binomial")
+# training_set$predicted_new.line <- logOdds.to.Prob(predict.verif.m.line)
 
-# predict.verif.m <- predict.glm(train.m.base, newdata=dplyr::select(verification_set,c(prior_publication)), family="binomial")
-# verification_set$predicted_new <- logOdds.to.Prob(predict.verif.m)
-# (quants <- quantile(verification_set$predicted_new, c(.25,.5,.75,.8,.85,.9,.95,.975,.998,.999096), na.rm=TRUE))
+# predict.verif.m.line.log <- predict.glm(train.m.line.log, newdata=dplyr::select(training_set,c(prior_publication,logTopicSim)), family="binomial")
+# training_set$predicted_new.line.log <- logOdds.to.Prob(predict.verif.m.line.log)
 
+
+### Visualizing Error in Linear Topic Similarity Predictors ###
+
+# training_set <- training_set %>%
+#   mutate(resid.line = new_publication - predicted_new.line.log,
+#          neglogTopicSim = -log10(pi/2-topicSim),
+#          bin = ntile(logTopicSim,200))
+# 
+# bin.training.resid <- training_set %>%
+#   filter(bin != 1) %>%
+#   group_by(bin) %>%
+#   summarise(mean.bin.logTopicSim=mean(logTopicSim),
+#             mean.resid=mean(resid.line))
+# ggplot(bin.training.resid, aes(x=mean.bin.logTopicSim, y=mean.resid)) +
+#   geom_point() +
+#   scale_x_continuous("binned topic similarity")
+# ggsave("img/binnedResidPlot.loglinearPredictor.png")
+
+###
+
+
+
+
+predict.verif.m <- predict.glm(train.m.line.log, newdata=dplyr::select(verification_set,c(prior_publication,logTopicSim)), family="binomial")
+verification_set$predicted_new <- logOdds.to.Prob(predict.verif.m)
+(quants <- quantile(verification_set$predicted_new, c(.25,.5,.75,.8,.85,.9,.95,.975,.998,.999096), na.rm=TRUE))
 
 all.accuracy <- data.frame()
 for(i in 1:length(quants)){

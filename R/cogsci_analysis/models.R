@@ -29,13 +29,15 @@ model_data %>%
   dplyr::arrange(desc(n)) # some authors missing from coauthorship matrix
 
 data.pre2019 <- model_data %>%
-  filter(year < 2019)
+  filter(year < 2019) %>%
+  mutate(logTopicSim = -log(pi/2-topicSim))
 
 
-m.quad <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=data.pre2019, family=binomial())
-summary(m.quad)
+# model we'll be using?
+m.log <- glm(new_publication ~ prior_publication + logTopicSim, data=data.pre2019, family=binomial())
+summary(m.log)
 
-m <- glm(new_publication ~ prior_publication + poly(topicSim,1), data=df, family=binomial())
+m <- glm(new_publication ~ prior_publication + topicSim, data=df, family=binomial())
 summary(m)
 
 m.base <- glm(new_publication ~ prior_publication, data=df, family=binomial())
@@ -193,5 +195,12 @@ summary(m5.line)
 
 anova(m5.line, m5.quad, test='Chisq')
 
-data.frame(summary(m5.quad)$coeff)
-
+data.frame(prior_pub_year = paste0("year = n-",1:5),
+           estimate = coef(summary(m5.quad))[2:6,'Estimate'],
+           std.err = coef(summary(m5.quad))[2:6,'Std. Error']) %>%
+  mutate(lower=estimate-std.err,
+         upper=estimate+std.err) %>%
+  ggplot(aes(x=prior_pub_year, y=estimate)) +
+  geom_bar(stat="identity") +
+  geom_errorbar(aes(ymin=lower, ymax=upper))
+ggsave("img/betaParameter_year.png")
