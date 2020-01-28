@@ -2,17 +2,16 @@ setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
 library(tidyverse)
 library(lme4)
 cogsci_byAuthor = read_csv("cogsci_byAuthor.csv")
-centrality2018 = read_csv("networkByYear/centrality_2018.csv")
-centrality_all = read_csv("networkByYear/centrality_all.csv")
 
-model_data <- data.frame()
-for(i in 2000:2019){
-  subset_data <- read_csv(paste0("topicCoauthMatr/topicCoauth",i,".csv")) %>%
-    mutate(topicSim = authorsSim) %>%
-    dplyr::select(-c(X1, authorsSim))
-  model_data <- bind_rows(model_data, subset_data)
-}
-write_csv(model_data, "full_model_data.csv")
+# model_data <- data.frame()
+# for(i in 2000:2019){
+#   subset_data <- read_csv(paste0("topicCoauthMatr/topicCoauth",i,".csv")) %>%
+#     mutate(topicSim = authorsSim) %>%
+#     dplyr::select(-c(X1, authorsSim))
+#   model_data <- bind_rows(model_data, subset_data)
+# }
+# write_csv(model_data, "full_model_data.csv")
+model_data <- read_csv("full_model_data.csv")
 
 
 
@@ -28,31 +27,36 @@ model_data %>%
   summarise(n=n()) %>%
   dplyr::arrange(desc(n)) # some authors missing from coauthorship matrix
 
+
 data.pre2019 <- model_data %>%
-  filter(year < 2019) %>%
-  mutate(logTopicSim = -log(pi/2-topicSim))
+  filter(year < 2019 & !is.na(prior_publication)) %>%
+  mutate(neglogTopicSim = log(pi/2-topicSim))
 
 
 # model we'll be using?
-m.log <- glm(new_publication ~ prior_publication + logTopicSim, data=data.pre2019, family=binomial())
+m.log <- glm(new_publication ~ prior_publication + neglogTopicSim, data=data.pre2019, family=binomial())
 summary(m.log)
 
-m <- glm(new_publication ~ prior_publication + topicSim, data=df, family=binomial())
-summary(m)
+m.log.2000 <- glm(new_publication ~ prior_publication + neglogTopicSim, data=filter(data.pre2019, year==2000), family=binomial())
+summary(m.log.2000)
 
-m.base <- glm(new_publication ~ prior_publication, data=df, family=binomial())
-summary(m.base)
+m.log.2018 <- glm(new_publication ~ prior_publication + neglogTopicSim, data=filter(data.pre2019, year==2018), family=binomial())
+summary(m.log.2018)
 
-anova(m.quad, m.base,test='Chisq')
+# m.base <- glm(new_publication ~ prior_publication, data=df, family=binomial())
+# summary(m.base)
+# 
+# anova(m.quad, m.base,test='Chisq')
 
 ## predict 2019
 pred2019.df <- model_data %>%
-  filter(year == 2019)
-predict.m <- predict.glm(m, newdata=dplyr::select(pred2019.df,c(prior_publication,topicSim)), family="binomial")
+  filter(year == 2019) %>%
+  mutate(neglogTopicSim = log(pi/2-topicSim))
+predict.m <- predict.glm(m.log, newdata=dplyr::select(pred2019.df,c(prior_publication,neglogTopicSim)), family="binomial")
 logOdds.to.Prob <- function(y){
   exp(y)/(1+exp(y))
 }
-pred2018.df$new_publication <- logOdds.to.Prob(predict.m)
+pred2019.df$new_publication <- logOdds.to.Prob(predict.m)
 
 write.csv(pred2019.df, "model_prediction.csv")
 

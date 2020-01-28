@@ -1,0 +1,85 @@
+2001-2018 data
+> m.log <- glm(new_publication ~ prior_publication + neglogTopicSim, data=df, family=binomial())
+> summary(m.log)
+
+Call:
+glm(formula = new_publication ~ prior_publication + neglogTopicSim, 
+    family = binomial(), data = df)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-0.7859  -0.0207  -0.0175  -0.0147   4.5333  
+
+Coefficients:
+                  Estimate Std. Error z value Pr(>|z|)    
+(Intercept)       -7.46831    0.02345 -318.53   <2e-16 ***
+prior_publication  6.16878    0.02572  239.82   <2e-16 ***
+neglogTopicSim     0.62627    0.01197   52.32   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 437273  on 52326348  degrees of freedom
+Residual deviance: 248298  on 52326346  degrees of freedom
+AIC: 248304
+
+Number of Fisher Scoring iterations: 11
+
+
+2001 data
+> m.log.2001 <- glm(new_publication ~ prior_publication + neglogTopicSim, data=filter(df, year==2001), family=binomial())
+> summary(m.log.2001)
+
+Call:
+glm(formula = new_publication ~ prior_publication + neglogTopicSim, 
+    family = binomial(), data = filter(df, year == 2001))
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-0.8293  -0.0261  -0.0223  -0.0190   4.2657  
+
+Coefficients:
+                  Estimate Std. Error z value Pr(>|z|)    
+(Intercept)        -7.1210     0.2009 -35.448  < 2e-16 ***
+prior_publication   5.9654     0.2245  26.569  < 2e-16 ***
+neglogTopicSim      0.5867     0.1051   5.581 2.39e-08 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 6440.6  on 409059  degrees of freedom
+Residual deviance: 3336.7  on 409057  degrees of freedom
+AIC: 3342.7
+
+Number of Fisher Scoring iterations: 11
+
+
+2018 data
+> m.log.2018 <- glm(new_publication ~ prior_publication + neglogTopicSim, data=filter(df, year==2018), family=binomial())
+> summary(m.log.2018)
+
+Call:
+glm(formula = new_publication ~ prior_publication + neglogTopicSim, 
+    family = binomial(), data = filter(df, year == 2018))
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-0.7395  -0.0187  -0.0157  -0.0132   4.4815  
+
+Coefficients:
+                  Estimate Std. Error z value Pr(>|z|)    
+(Intercept)       -7.66043    0.08760  -87.45   <2e-16 ***
+prior_publication  6.21581    0.09739   63.82   <2e-16 ***
+neglogTopicSim     0.63739    0.04518   14.11   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 31315  on 4444670  degrees of freedom
+Residual deviance: 17804  on 4444668  degrees of freedom
+AIC: 17810
+
+Number of Fisher Scoring iterations: 12

@@ -3,8 +3,7 @@ library(tidyverse)
 library(lme4)
 
 
-model_data <- read_csv("full_model_data.csv") %>%
-  select(-X1)
+model_data <- read_csv("vss_full_model_data.csv")
 
 glimpse(model_data)
 # sanity check
@@ -15,7 +14,8 @@ model_data %>%
   filter((authorA == "T Brady" | authorB == "T Brady") & topicSim == 0)
 
 data.pre2019 <- model_data %>%
-  filter(year<2019 & !is.na(prior_publication))
+  filter(year<2019 & !is.na(prior_publication)) %>%
+  mutate(logTopicSim = -log(pi/2-topicSim))
 
 
 
@@ -26,14 +26,16 @@ verification_set <- data.pre2019 %>%
 training_set <- data.pre2019 %>%
   anti_join(verification_set)
 
+train.m.base <- glm(new_publication ~ prior_publication, data=training_set, family=binomial())
+summary(train.m.base)
 
 train.m <- glm(new_publication ~ prior_publication + topicSim, data=training_set, family=binomial())
 summary(train.m)
 
-train.m.quad <- glm(new_publication ~ prior_publication + poly(topicSim,2), data=training_set, family=binomial())
-summary(train.m.quad)
+train.m.log <- glm(new_publication ~ prior_publication + logTopicSim, data=training_set, family=binomial())
+summary(train.m.log)
 
-predict.verif.m <- predict.glm(train.m, newdata=dplyr::select(verification_set,c(prior_publication,topicSim)), family="binomial")
+predict.verif.m <- predict.glm(train.m.log, newdata=dplyr::select(verification_set,c(prior_publication,logTopicSim)), family="binomial")
 logOdds.to.Prob <- function(y){
   exp(y)/(1+exp(y))
 }
