@@ -17,8 +17,7 @@ topic.df <- read_csv("cogsci_topics_authorAbbr.csv") %>%
   distinct() %>%
   mutate(authors=ifelse(grepl(",",authors), gsub(",.*","",authors), authors),
          authors=ifelse(authors=="J Tenenbaums", "J Tenenbaum", authors)) %>% #manually fixing incorrect author naming
-  select(-X1)
-
+  dplyr::select(-X1)
 sanitycheck_author_rows <- function(author.lookup, df) {
   author.grep = as.vector(unlist(sapply(author.lookup, function(author.lookup){return(grep(author.lookup, df$authors, value = TRUE))})))
   unique(author.grep)
@@ -38,7 +37,7 @@ length(unique(topic.author.year$authors))
 # get mean topic distribution for a set of documents
 get_avg_topic_dist <- function(df) {
   topic.means = df %>%
-    select(-title, -authors, -year) %>%
+    dplyr::select(-title, -authors, -year) %>%
     colMeans()
   topic.means = as.data.frame(topic.means)
   return(topic.means)
@@ -95,9 +94,9 @@ global.means = get_avg_topic_dist(topic.df)
 
 
 # test cosine similarity
-years.df <- selectYears(2018, TEST.N.YEARS)
-selectTopicByAuthor("J Tenenbaum")
-authors_prevTopicSim("J Tenenbaum", "E Vul")
+years.df <- selectYears(2000, 1)
+selectTopicByAuthor("A Almor")
+authors_prevTopicSim("A Almor", "A Bale")
 TEST.YEARS = 2001:2020
 TEST.AUTHORS = c("J Tenenbaum","T Griffiths","N Goodman","E Vul", "A Gopnik", "L Oey")
 TEST.N.YEARS = 2
@@ -180,3 +179,14 @@ for(year in ALL.YEARS){
   filename = paste0("topicSimYear.5/cogsci_topicSim.5_",year,".csv")
   write_csv(topicSim.df, filename)
 }
+
+
+
+
+
+
+
+
+
+
+

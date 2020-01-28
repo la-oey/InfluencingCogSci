@@ -4,8 +4,7 @@ library(lme4)
 library(car) #VIF
 library(arm) #binned residual plot
 
-model_data <- read_csv("full_model_data.csv") %>%
-  select(-X1)
+model_data <- read_csv("full_model_data.csv")
 
 
 #### FUNCTIONS ####
@@ -149,37 +148,101 @@ ggsave("img/ROCcurve.png")
 
 #### Model data w/ 5 years of coauthorships ####
 
-model_data.5 <- read_csv("full_model_data.5.csv") %>%
-  select(-X1)
+model_data.5 <- read_csv("full_model_data.5.csv")
 
 data.pre2019.5 <- model_data.5 %>%
   filter(year < 2019 & !is.na(topicSim) & 
            !is.na(prior_publication_minus1) & !is.na(prior_publication_minus2) &
            !is.na(prior_publication_minus3) & !is.na(prior_publication_minus4) &
-           !is.na(prior_publication_minus5))
+           !is.na(prior_publication_minus5)) %>%
+  mutate(neglogTopicSim = log(pi/2-topicSim),
+         logTopicSim = log(topicSim+0.0001))
 
-# split data 90% = training, 10% = verification for each year
+# split data 80% = training, 20% = verification for each year
 verification_set <- data.pre2019.5 %>%
   group_by(year) %>%
-  sample_n(floor(.1*n()))
+  sample_n(floor(.2*n()))
 training_set <- data.pre2019.5 %>%
   anti_join(verification_set)
 
-m5.train.quad <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
-                 prior_publication_minus3 + prior_publication_minus4 +
-                 prior_publication_minus5 + poly(topicSim,2), data=training_set, family=binomial())
-summary(m5.train.quad)
+# m5.train.log <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+#                  prior_publication_minus3 + prior_publication_minus4 +
+#                  prior_publication_minus5 + logTopicSim, data=training_set, family=binomial())
+# summary(m5.train.log)
 
-predict.verif.m5 <- predict.glm(m5.train.quad, 
-                               newdata=dplyr::select(verification_set,
-                                                     c(prior_publication_minus1,
-                                                       prior_publication_minus2,
-                                                       prior_publication_minus3,
-                                                       prior_publication_minus4,
-                                                       prior_publication_minus5,
-                                                       topicSim)), 
-                               family="binomial")
+m5.train.neglog <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                      prior_publication_minus3 + prior_publication_minus4 +
+                      prior_publication_minus5 + neglogTopicSim, data=training_set, family=binomial())
+summary(m5.train.neglog)
+
+m5.train <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                      prior_publication_minus3 + prior_publication_minus4 +
+                      prior_publication_minus5 + topicSim, data=training_set, family=binomial())
+summary(m5.train)
+
+m5.train.noSim <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                      prior_publication_minus3 + prior_publication_minus4 +
+                      prior_publication_minus5, data=training_set, family=binomial())
+summary(m5.train.noSim)
+
+m4.train.noSim <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                        prior_publication_minus3 + prior_publication_minus4, data=training_set, family=binomial())
+summary(m4.train.noSim)
+
+m3.train.noSim <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2 +
+                        prior_publication_minus3, data=training_set, family=binomial())
+summary(m3.train.noSim)
+
+m2.train.noSim <- glm(new_publication ~ prior_publication_minus1 + prior_publication_minus2, data=training_set, family=binomial())
+summary(m2.train.noSim)
+
+m1.train.noSim <- glm(new_publication ~ prior_publication_minus1, data=training_set, family=binomial())
+summary(m1.train.noSim)
+
+anova(m1.train.noSim, m2.train.noSim, m3.train.noSim, m4.train.noSim, m5.train.noSim, m5.train.neglog, test='Chisq')
+
+# plot residuals from model
+# predict.train.m5 <- predict.glm(m5.train.neglog,
+#                                newdata=dplyr::select(training_set,
+#                                                      c(prior_publication_minus1,
+#                                                        prior_publication_minus2,
+#                                                        prior_publication_minus3,
+#                                                        prior_publication_minus4,
+#                                                        prior_publication_minus5,
+#                                                        neglogTopicSim)),
+#                                family="binomial")
+# training_set$predicted_new <- logOdds.to.Prob(predict.train.m5)
+# 
+# training_set <- training_set %>%
+#   mutate(resid = new_publication - predicted_new,
+#          bin = ntile(neglogTopicSim,200))
+# 
+# bin.training.resid <- training_set %>%
+#   group_by(bin) %>%
+#   summarise(mean.bin.logTopicSim=mean(neglogTopicSim),
+#             mean.resid=mean(resid))
+# ggplot(bin.training.resid, aes(x=mean.bin.logTopicSim, y=mean.resid)) +
+#   geom_point() +
+#   scale_x_continuous("binned topic similarity")
+
+
+
+
+
+
+
+
+predict.verif.m5 <- predict.glm(m5.train.neglog,
+                                newdata=dplyr::select(verification_set,
+                                                      c(prior_publication_minus1,
+                                                        prior_publication_minus2,
+                                                        prior_publication_minus3,
+                                                        prior_publication_minus4,
+                                                        prior_publication_minus5,
+                                                        neglogTopicSim)),
+                                family="binomial")
 verification_set$predicted_new <- logOdds.to.Prob(predict.verif.m5)
+
 (quants <- quantile(verification_set$predicted_new, c(.25,.5,.75,.8,.85,.9,.95,.975,.998,.999096), na.rm=TRUE))
 
 all.accuracy <- data.frame()
