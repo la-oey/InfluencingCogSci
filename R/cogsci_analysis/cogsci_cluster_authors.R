@@ -1,5 +1,6 @@
 setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis")
 library(tidyverse)
+library(plot3D)
 library(pbapply)
 library(stringr)
 library(cluster)
@@ -12,8 +13,8 @@ topic.df <- read_csv("cogsci_topics_authorAbbr.csv") %>%
 allAuthors <- topic.df %>%
   dplyr::select(authors) %>%
   distinct() %>%
-  dplyr::arrange(authors) #data frame of authors in alphabetical order
-(len.authors = nrow(allAuthors))
+  dplyr::arrange(authors) %>% #data frame of authors in alphabetical order
+  na.omit()
 ### FUNCTIONS ###
 
 # get mean topic distribution for a set of documents
@@ -25,22 +26,123 @@ get_avg_topic_dist <- function(df) {
   return(topic.means)
 }
 
-selectTopicByAuthor <- function(author){
-  topic.df %>%
+global_average = get_avg_topic_dist(topic.df)
+
+selectTopicByAuthor <- function(author, df=topic.df){
+  df %>%
     filter(authors == author) %>%
     get_avg_topic_dist()
 }
 
+selectSmoothTopicByAuthor <- function(author, n, df=topic.df){
+  df %>%
+    filter(authors == author) %>%
+    bind_rows(as.data.frame(matrix(c(rep(NA,3), global_average$topic.means), #binds fake rows of global (smoothing)
+                                   ncol=103, nrow=n, byrow=TRUE, dimnames = list(NULL, names(topic.df))))) %>%
+    get_avg_topic_dist()
+}
+
 #################
+selectTopicByAuthor("E Vul", topic.df)
+selectSmoothTopicByAuthor("E Vul", 2, topic.df)
+selectSmoothTopicByAuthor("E Vul", 2, years.df)
 
-selectTopicByAuthor("E Vul")
-
+(len.authors = nrow(allAuthors))
 authorTopics.df <- allAuthors %>%
-  mutate(authorTopics = pbmapply(selectTopicByAuthor, authors)) %>%
+  mutate(authorTopics = pbmapply(selectSmoothTopicByAuthor, authors, MoreArgs=list(n=2))) %>%
   unnest(authorTopics) %>%
   mutate(topic = paste0("topic",str_pad(rep(1:100, len.authors), 3, pad = "0"))) %>%
   spread(topic, authorTopics) %>%
   na.omit()
+
+d <- dist(authorTopics.df[,2:101])
+fit <- cmdscale(d, eig=TRUE, k=2)
+fitdf <- fit$points %>%
+  as.data.frame() %>%
+  bind_cols(allAuthors)
+write_csv(fitdf, "fitMDS2.csv")
+
+ggplot(fitdf, aes(x=V1, y=V2, label=authors)) +
+  geom_text(alpha=0.5, size=2)
+ggsave("img/MDS_2.png")
+
+fit3 <- cmdscale(d, eig=TRUE, k=3)
+fitdf3 <- fit3$points %>%
+  as.data.frame() %>%
+  bind_cols(allAuthors)
+write_csv(fitdf3, "fitMDS3.csv")
+
+plot_ly(fitdf3, x=~V1, y=~V2, z=~V3, size=0.2, alpha=0.2)
+
+
+
+
+################
+
+#### MDS by Year ####
+
+years.df <- topic.df %>%
+  filter(year == 2019)
+
+authors.2019 <- years.df %>%
+  dplyr::select(authors) %>%
+  distinct() %>%
+  dplyr::arrange(authors)
+
+authorsTopics.df2019 <- authors.2019 %>%
+  mutate(authorTopics = pbmapply(selectSmoothTopicByAuthor, authors, MoreArgs=list(n=2, df=years.df))) %>%
+  unnest(authorTopics) %>%
+  mutate(topic = paste0("topic",str_pad(rep(1:100, length(unique(years.df$authors))), 3, pad = "0"))) %>%
+  spread(topic, authorTopics) %>%
+  na.omit()
+
+# Classical MDS
+d <- dist(authorsTopics.df2019[,2:101])
+
+## 2 dimensions
+fit <- cmdscale(d, eig=TRUE, k=2)
+fitdf <- fit$points %>%
+  as.data.frame() %>%
+  bind_cols(authors.2019)
+
+ggplot(fitdf, aes(x=V1, y=V2, label=authors)) +
+  geom_text(alpha=0.5, size=2)
+
+## 3 dimensions
+fit <- cmdscale(d, eig=TRUE, k=3)
+fitdf <- fit$points %>%
+  as.data.frame() %>%
+  bind_cols(authors.2019)
+plot_ly(fitdf, x=~V1, y=~V2, z=~V3, size=0.2, alpha=0.2) #plot in 3D
+
+
+#### isoMDS() ####
+library(MASS)
+# d <- dist(t(authorsTopics.df2019[,2:101]))
+# fit <- isoMDS(d, k=2)
+# fitdf <- fit$points %>%
+#   as.data.frame() %>%
+#   bind_cols(topics=rownames(fit$points))
+# 
+# ggplot(fitdf, aes(x=V1, y=V2, label=topics)) +
+#   geom_text(alpha=0.5, size=2)
+
+
+distinctAuthTops <- authorsTopics.df2019[2:101] %>%
+  distinct() # need to remove "duplicate authors", i.e. same topic, to do isoMDS
+d <- dist(distinctAuthTops)
+fit <- isoMDS(d, k=2)
+fitdf <- fit$points %>%
+  as.data.frame()
+ggplot(fitdf, aes(x=V1, y=V2)) +
+  geom_point()
+
+fit <- isoMDS(d, k=3)
+fitdf <- fit$points %>%
+  as.data.frame()
+plot_ly(fitdf, x=~V1, y=~V2, z=~V3, size=0.2, alpha=0.2)
+
+
 
 start <- Sys.time()
 set.seed(1000)
