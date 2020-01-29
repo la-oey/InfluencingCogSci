@@ -4,11 +4,21 @@ library(plot3D)
 library(pbapply)
 library(stringr)
 library(cluster)
+library(factoextra)
 topic.df <- read_csv("cogsci_topics_authorAbbr.csv") %>%
   distinct() %>%
   mutate(authors=ifelse(grepl(",",authors), gsub(",.*","",authors), authors),
          authors=ifelse(authors=="J Tenenbaums", "J Tenenbaum", authors)) %>% #manually fixing incorrect author naming
   dplyr::select(-X1)
+
+# read in centrality
+all_centrality <- data.frame()
+for(i in 2000:2019){
+  year_centrality <- read_csv(paste0("networkByYear/centrality_",i,".csv")) %>%
+    mutate(year=i) %>%
+    select(-X1)
+  all_centrality <- bind_rows(all_centrality, year_centrality)
+}
 
 allAuthors <- topic.df %>%
   dplyr::select(authors) %>%
@@ -64,7 +74,7 @@ write_csv(fitdf, "fitMDS2.csv")
 
 ggplot(fitdf, aes(x=V1, y=V2, label=authors)) +
   geom_text(alpha=0.5, size=2)
-ggsave("img/MDS_2.png")
+ggsave("img/MDS_2_smooth.png")
 
 fit3 <- cmdscale(d, eig=TRUE, k=3)
 fitdf3 <- fit3$points %>%
@@ -75,12 +85,100 @@ write_csv(fitdf3, "fitMDS3.csv")
 plot_ly(fitdf3, x=~V1, y=~V2, z=~V3, size=0.2, alpha=0.2)
 
 
+glimpse(fitdf)
+
+
+
+start <- Sys.time()
+authorClusters = list()
+for(i in 1:10){
+  temp.authorCluster <- kmeans(fitdf[, 1:2], i, nstart = 25)
+  authorClusters[[i]] = temp.authorCluster
+  print(Sys.time()-start)
+}
+
+fitdf.final <- fitdf[,1:2]
+rownames(fitdf.final) <- fitdf$authors
+
+for(i in 1:10){
+  fviz_cluster(authorClusters[[i]], data = fitdf.final, labelsize=5)
+  ggsave(paste0("img/kmeans/full_kmeans_",i,".png"))
+}
+
+evalK = data.frame()
+for(i in 1:10){
+  evalK <- bind_rows(evalK,
+                     data.frame(k=i,
+                                betweenss=authorClusters[[i]]$betweenss,
+                                tot.withinss=authorClusters[[i]]$tot.withinss,
+                                totss=authorClusters[[i]]$totss))
+}
+evalK %>%
+  mutate(b_totss = betweenss/totss) %>%
+  dplyr::arrange(desc(b_totss)) %>%
+  ggplot(aes(x=k, y=tot.withinss)) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous("total within SS")
+ggsave("img/kmeans/total_within.png")
+
+
+
+
 
 
 ################
 
 #### MDS by Year ####
+years = 2000:2019
+mds.year = list()
+for(i in 1:20){
+  years.df <- topic.df %>%
+    filter(year == years[i])
+  
+  authors.year <- years.df %>%
+    dplyr::select(authors) %>%
+    distinct() %>%
+    dplyr::arrange(authors) %>%
+    na.omit()
+  
+  authorsTopics.df.year <- authors.year %>%
+    mutate(authorTopics = pbmapply(selectSmoothTopicByAuthor, authors, MoreArgs=list(n=2, df=years.df))) %>%
+    unnest(authorTopics) %>%
+    mutate(topic = paste0("topic",str_pad(rep(1:100, length(unique(authors.year$authors))), 3, pad = "0"))) %>%
+    spread(topic, authorTopics) %>%
+    na.omit()
+  
+  d <- dist(authorsTopics.df.year[,2:101])
+  fit <- cmdscale(d, eig=TRUE, k=2)
+  fitdf <- fit$points %>%
+    as.data.frame() %>%
+    bind_cols(authors.year)
+  mds.year[[i]] = fitdf %>%
+    mutate(year=years[i])
+  write_csv(fitdf, paste0("mdsfits/mdsfit_",years[i],".csv"))
+  
+  central_auth = all_centrality %>%
+    filter(year == years[i], CM == "eigen") %>%
+    top_n(1, measure) %>%
+    .$label
+  ggplot(fitdf, aes(x=V1, y=V2, label=authors)) +
+    geom_text(alpha=0.5, size=2) +
+    geom_text(data=filter(fitdf, authors==central_auth), colour="red", alpha=0.5, size=2)
+  ggsave(paste0("img/mds_byYear/mds_",years[i],".png"))
+}
 
+
+############################################
+
+
+
+
+
+
+
+
+#### MDS for Specific Year ####
 years.df <- topic.df %>%
   filter(year == 2019)
 
