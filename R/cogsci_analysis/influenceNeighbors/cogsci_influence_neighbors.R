@@ -45,8 +45,8 @@ get_neighbor_topic_dist_byYear <- function(year.select, author, neighbor.dist=2:
 }
 
 get_projection_angle = function(vec.a, vec.b) {
-  theta = acos( sum(vec.a * vec.b) / ( sqrt(sum(vec.a * vec.a)) * sqrt(sum(vec.b * vec.b)) ) )
-  return(theta)
+  cos.theta = sum(vec.a * vec.b) / ( sqrt(sum(vec.a * vec.a)) * sqrt(sum(vec.b * vec.b)) )
+  return(cos.theta)
 }
 
 prob_to_logit = function(p){
@@ -115,12 +115,12 @@ nrow(combinedTopicDist) #2,687 distinct authors/years
 
 all_proj_angles <- combinedTopicDist %>%
   group_by(authors, prev.year) %>%
-  summarise(proj_angle_author = get_projection_angle(diff.author_mean, diff.prev.neighbor_author_mean),
-            proj_angle_neighbors = get_projection_angle(diff.neighbor_mean, diff.prev.neighbor_author_mean))
+  summarise(proj_scalar_author = get_projection_angle(diff.author_mean, diff.prev.neighbor_author_mean)*sqrt(sum(diff.author_mean^2)),
+            proj_scalar_neighbors = get_projection_angle(diff.neighbor_mean, diff.prev.neighbor_author_mean)*sqrt(sum(diff.neighbor_mean^2)))
 all_proj_angles
 write_csv(all_proj_angles, "all_projection_angles.csv")
 
-ggplot(all_proj_angles, aes(x=proj_angle_author, y=proj_angle_neighbors)) +
+ggplot(all_proj_angles, aes(x=proj_scalar_author, y=proj_scalar_neighbors)) +
   geom_point()
 
 
@@ -154,13 +154,13 @@ all_proj_angles_central <- all_proj_angles %>%
 
 
 
-cor.test(all_proj_angles_central$proj_angle_author, all_proj_angles_central$proj_angle_neighbors)
+cor.test(all_proj_angles_central$proj_scalar_author, all_proj_angles_central$proj_scalar_neighbors)
 
-cor.test(all_proj_angles_central$logit.eigen, all_proj_angles_central$proj_angle_neighbors)
-cor.test(all_proj_angles_central$logit.eigen, all_proj_angles_central$proj_angle_author)
+cor.test(all_proj_angles_central$logit.eigen, all_proj_angles_central$proj_scalar_neighbors)
+cor.test(all_proj_angles_central$logit.eigen, all_proj_angles_central$proj_scalar_author)
 
-cor.test(log(all_proj_angles_central$degree), all_proj_angles_central$proj_angle_neighbors)
-cor.test(log(all_proj_angles_central$degree), all_proj_angles_central$proj_angle_author)
+cor.test(log(all_proj_angles_central$degree), all_proj_angles_central$proj_scalar_neighbors)
+cor.test(log(all_proj_angles_central$degree), all_proj_angles_central$proj_scalar_author)
 
 cor.test(log(all_proj_angles_central$close), all_proj_angles_central$proj_angle_neighbors)
 cor.test(log(all_proj_angles_central$close), all_proj_angles_central$proj_angle_author)
@@ -189,9 +189,15 @@ ggplot(all_proj_angles_central, aes(x=proj_angle_neighbors)) +
 ggplot(all_proj_angles_central, aes(x=logit.eigen, y=proj_angle_neighbors)) +
   geom_point()
 
-ggplot(all_proj_angles_central, aes(x=log(degree), y=proj_angle_neighbors)) +
+ggplot(all_proj_angles_central, aes(x=log(degree), y=proj_scalar_neighbors)) +
   geom_point()
+
+ggplot(all_proj_angles_central, aes(x=log(degree), y=proj_scalar_author)) +
+  geom_point()
+
+
 
 ggplot(all_proj_angles_central, aes(x=log(close), y=proj_angle_neighbors)) +
   geom_point()
+
 
