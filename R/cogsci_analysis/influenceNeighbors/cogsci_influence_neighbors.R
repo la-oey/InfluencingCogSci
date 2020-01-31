@@ -2,7 +2,7 @@ setwd("/Users/loey/Desktop/Research/InfluencingCogSci/R/cogsci_analysis/influenc
 library(tidyverse)
 library(futile.matrix)
 library(pbapply)
-topic.df <- read_csv("../cogsci_topics_authorAbbr.csv") %>%
+topic.df <- read_csv("cogsci_topics_authorAbbr.csv") %>%
   distinct() %>%
   mutate(authors=ifelse(grepl(",",authors), gsub(",.*","",authors), authors),
          authors=ifelse(authors=="J Tenenbaums", "J Tenenbaum", authors)) %>%
@@ -121,7 +121,8 @@ all_proj_angles
 write_csv(all_proj_angles, "all_projection_angles.csv")
 
 ggplot(all_proj_angles, aes(x=proj_scalar_author, y=proj_scalar_neighbors)) +
-  geom_point()
+  geom_point() +
+  geom_rug()
 
 
 
@@ -162,8 +163,8 @@ cor.test(all_proj_angles_central$logit.eigen, all_proj_angles_central$proj_scala
 cor.test(log(all_proj_angles_central$degree), all_proj_angles_central$proj_scalar_neighbors)
 cor.test(log(all_proj_angles_central$degree), all_proj_angles_central$proj_scalar_author)
 
-cor.test(log(all_proj_angles_central$close), all_proj_angles_central$proj_angle_neighbors)
-cor.test(log(all_proj_angles_central$close), all_proj_angles_central$proj_angle_author)
+cor.test(log(all_proj_angles_central$close), all_proj_angles_central$proj_scalar_neighbors)
+cor.test(log(all_proj_angles_central$close), all_proj_angles_central$proj_scalar_author)
 
 
 
@@ -180,24 +181,86 @@ ggplot(all_proj_angles_central, aes(x=log(close))) +
 ggplot(all_proj_angles_central, aes(x=log(between))) +
   geom_density()
 
-ggplot(all_proj_angles_central, aes(x=proj_angle_author)) +
-  geom_density()
-
-ggplot(all_proj_angles_central, aes(x=proj_angle_neighbors)) +
-  geom_density()
-
-ggplot(all_proj_angles_central, aes(x=logit.eigen, y=proj_angle_neighbors)) +
-  geom_point()
+ggplot(all_proj_angles_central, aes(x=logit.eigen, y=proj_scalar_neighbors)) +
+  geom_point() +
+  geom_smooth(method=lm)
 
 ggplot(all_proj_angles_central, aes(x=log(degree), y=proj_scalar_neighbors)) +
-  geom_point()
+  geom_point() +
+  geom_smooth(method=lm)
 
 ggplot(all_proj_angles_central, aes(x=log(degree), y=proj_scalar_author)) +
+  geom_point() +
+  geom_smooth(method=lm)
+
+ggplot(all_proj_angles_central, aes(x=log(close), y=proj_scalar_neighbors)) +
   geom_point()
 
 
+#### NULL SHUFFLE PROJECTION AND CENTRALITY ####
 
-ggplot(all_proj_angles_central, aes(x=log(close), y=proj_angle_neighbors)) +
-  geom_point()
+corr<- function(dat){
+  with(data=dat, cor(dat$central, dat$proj_scalar))
+}
+
+dat.shuffle.degree.neighbors <- function(dat){
+  data.frame(central=log(dat$degree), 
+             proj_scalar=sample(dat$proj_scalar_neighbors, length(dat$proj_scalar_neighbors), replace=F))
+}
+
+dat.shuffle.degree.author <- function(dat){
+  data.frame(central=log(dat$degree), 
+             proj_scalar=sample(dat$proj_scalar_author, length(dat$proj_scalar_author), replace=F))
+}
+
+dat.shuffle.eigen.neighbors <- function(dat){
+  data.frame(central=dat$logit.eigen, 
+             proj_scalar=sample(dat$proj_scalar_neighbors, length(dat$proj_scalar_neighbors), replace=F))
+}
+
+dat.shuffle.eigen.author <- function(dat){
+  data.frame(central=dat$logit.eigen, 
+             proj_scalar=sample(dat$proj_scalar_author, length(dat$proj_scalar_author), replace=F))
+}
 
 
+
+
+K = 10000
+shuffle.samps.degree.neighbors <- replicate(K, corr(dat.shuffle.degree.neighbors(all_proj_angles_central)))
+shuffle.samps.degree.author <- replicate(K, corr(dat.shuffle.degree.author(all_proj_angles_central)))
+shuffle.samps.eigen.neighbors <- replicate(K, corr(dat.shuffle.eigen.neighbors(all_proj_angles_central)))
+shuffle.samps.eigen.author <- replicate(K, corr(dat.shuffle.eigen.author(all_proj_angles_central)))
+
+trueDegreeNeighborCorr <- cor(log(all_proj_angles_central$degree), all_proj_angles_central$proj_scalar_neighbors)
+trueDegreeAuthorCorr <- cor(log(all_proj_angles_central$degree), all_proj_angles_central$proj_scalar_author)
+trueEigenNeighborCorr <- cor(all_proj_angles_central$logit.eigen, all_proj_angles_central$proj_scalar_neighbors)
+trueEigenAuthorCorr <- cor(all_proj_angles_central$logit.eigen, all_proj_angles_central$proj_scalar_author)
+
+data.frame(r = shuffle.samps.degree.neighbors) %>%
+  ggplot(aes(x=r)) +
+  geom_histogram() +
+  geom_vline(xintercept=trueNeighborCorr, colour="red") +
+  ggtitle("Null Shuffle Log(Degree Centrality) vs Author Influence Neighbors")
+ggsave("img/null.shuffle.simple_centralVsProj_influenceNeighbors.png")
+
+data.frame(r = shuffle.samps.degree.author) %>%
+  ggplot(aes(x=r)) +
+  geom_histogram() +
+  geom_vline(xintercept=trueAuthorCorr, colour="red") +
+  ggtitle("Null Shuffle Log(Degree Centrality) vs Neighbors Influence Author")
+ggsave("img/null.shuffle.simple_centralVsProj_influenceAuthor.png")
+
+data.frame(r = shuffle.samps.eigen.neighbors) %>%
+  ggplot(aes(x=r)) +
+  geom_histogram() +
+  geom_vline(xintercept=trueEigenNeighborCorr, colour="red") +
+  ggtitle("Null Shuffle Logit(Eigen Centrality) vs Author Influence Neighbors")
+ggsave("img/null.shuffle.simple_centralVsProj_influenceNeighbors_eigen.png")
+
+data.frame(r = shuffle.samps.eigen.author) %>%
+  ggplot(aes(x=r)) +
+  geom_histogram() +
+  geom_vline(xintercept=trueEigenAuthorCorr, colour="red") +
+  ggtitle("Null Shuffle Logit(Eigen Centrality) vs Neighbors Influence Author")
+ggsave("img/null.shuffle.simple_centralVsProj_influenceAuthor_eigen.png")
