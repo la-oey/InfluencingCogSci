@@ -173,13 +173,31 @@ edgesByYear %>%
 #### IDEAL GRAPHS ####
 
 ## Random Shuffle Authors to Papers
+## Transdisciplinary Graph
 set.seed(1234)
 shuffled <- full %>% 
-  dplyr::select(-c(html_link, pdf_link, author)) %>%
+  dplyr::select(-c(html_link, pdf_link, author, abstract, full_text)) %>%
   group_by(conference, year) %>% 
   mutate(shuffAuthor=sample(authorAbbr))
+write_csv(shuffled, "shuffle_ideal_transdisciplinary.csv")
 
 ## Shuffle Authors within Similarity Bin
+## Disciplinary Graph
+sample_author <- function(conference.select, year.select, num.assignments){
+  selectConfYear = sampleBin %>%
+    filter(conference==conference.select, year==year.select)
+  samp = sample(unique(selectConfYear$authorAbbr),num.assignments)
+  return(list(samp))
+}
+
+sample_batch <- function(author1, num.authors){
+  selectConfYearAuth <- sampleBin.year %>%
+    filter(authorAbbr==author1)
+  samp = sample(unique(selectConfYearAuth$authorB), num.authors-1)
+  return(list(c(author1,samp)))
+}
+
+# create full similarity matrix
 flipped_cogsci <- all_similar %>%
   filter(conference == "CogSci") %>%
   mutate(authorTemp = authorA,
@@ -189,50 +207,54 @@ flipped_cogsci <- all_similar %>%
 
 all_similar <- bind_rows(flipped_cogsci, all_similar)
 
+# bin similarity to any other author for all authors
 binnedSimilar <- all_similar %>%
   filter(authorA != authorB) %>%
   mutate(authorAbbr = authorA) %>%
   group_by(conference,year,authorAbbr) %>%
   mutate(bin = ntile(authorsSim,20))
 
-
 countAuthors <- full %>%
   group_by(conference, year, authors, title) %>%
   summarise(numAuthors = n())
-head(countAuthors,10)
 
+# select bin # for randomization
+# here we're randomly selecting co-authors from author's first bin
 sampleBin <- binnedSimilar %>%
   filter(bin==1)
 
-
-sample_author <- function(conference.select, year.select, num.assignments){
-  selectConfYear = sampleBin %>%
-    filter(conference==conference.select, year==year.select)
-  samp = sample(unique(selectConfYear$authorAbbr),num.assignments)
-  return(list(samp))
-}
-
-sample_batch <- function(conference.select, year.select, author1, num.authors){
-  selectConfYearAuth <- sampleBin %>%
-    filter(conference==conference.select, year==year.select, authorAbbr==author1)
-  samp = sample(unique(selectConfYearAuth$authorB), num.authors-1)
-  return(list(c(author1,samp)))
-}
-
-
-
+# randomly select first author for each paper
 listAuthors <- docsByYear %>%
   mutate(sampled_author1 = pbmapply(sample_author, conference, year, documents))
 unnestAuthors <- listAuthors %>%
   unnest()
 unnestAuthors$numAuthors <- countAuthors$numAuthors
-selectAllAuthors <- unnestAuthors %>%
-  mutate(sampled_batch = pbmapply(sample_batch, conference, year, sampled_author1, numAuthors))
-unnestAllAuthors <- selectAllAuthors %>%
-  unnest() %>%
-  dplyr::select(-c(documents, numAuthors, sampled_author1))
 
+# randomly select 2nd+ author for each paper from first author's 1st bin of similar authors
+allBatches = data.frame()
+for(i in 1:nrow(docsByYear)){
+  sampleBin.year <- sampleBin %>%
+    filter(conference == docsByYear$conference[i], year == docsByYear$year[i])
+  
+  samp_batch <- unnestAuthors %>%
+    filter(conference == docsByYear$conference[i], year == docsByYear$year[i]) %>%
+    mutate(sampled_batch = pbmapply(sample_batch, sampled_author1, numAuthors))
+  allBatches <- bind_rows(allBatches, samp_batch)
+}
+unnestAllBatches <- allBatches %>%
+  unnest()
+
+# append shuffled authors to real papers
 shuffledSimilar <- full
-shuffledSimilar$shuffAuthor=unnestAllAuthors$sampled_batch
-nrow(shuffledSimilar)
-nrow(unnestAllAuthors)
+shuffledSimilar$shuffAuthor=unnestAllBatches$sampled_batch
+
+shuffledSimilar <- shuffledSimilar %>%
+  dplyr::select(-c(html_link, pdf_link, author, abstract, full_text))
+write_csv(shuffledSimilar, "shuffleSimilar_ideal_disciplinary.csv")
+
+
+
+
+
+
+
