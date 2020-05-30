@@ -117,23 +117,225 @@ process_data = function(data) {
 }
 
 
+# Function to get list of unique authors from holdout data frame
+get_unique_authors = function(data) {
+  unique_authors = union(
+    unique(data$`Author 1 - processed`),
+    unique(data$`Author 2 - processed`))
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 3 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 4 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 5 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 6 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 7 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 8 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 9 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 10 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 11 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 12 - processed`)
+  )
+  unique_authors = union(
+    unique_authors,
+    unique(data$`Author 13 - processed`)
+  )
+
+  return(unique_authors)
+}
+
+
+# Function to generate (empty) authorship matrix
+get_author_mat = function(unique_authors) {
+  author_mat = matrix(0, nrow = length(unique_authors), ncol = length(unique_authors))
+  # set diagonals to 1
+  diag(author_mat) = 1
+  # set rownames and colnames
+  rownames(author_mat) = unique_authors
+  colnames(author_mat) = unique_authors
+  
+  return(author_mat)
+}
+
+
+# Function to populate author matrix
+# NB: this populates the upper right diagonal of the matrix
+#     A   B   C
+# A   1   1   1
+# B   0   1   1
+# C   0   0   1
+# Sum columnwise to get an author's pub count: sum(author_mat[,'J Tenenbaum'])
+populate_author_mat = function(author_mat, data) {
+  rows = data %>% nrow()
+  for (i in 1:rows) {
+    pub = data %>% filter(row_number() == i)
+    if (!is.na(pub$`Author 2 - processed`)) {
+      author_mat[pub$`Author 2 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 3 - processed`)) {
+      author_mat[pub$`Author 3 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 3 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 4 - processed`)) {
+      author_mat[pub$`Author 4 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 4 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 4 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 5 - processed`)) {
+      author_mat[pub$`Author 5 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 5 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 5 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 5 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 6 - processed`)) {
+      author_mat[pub$`Author 6 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 6 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 6 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 6 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 6 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 7 - processed`)) {
+      author_mat[pub$`Author 7 - processed`, pub$`Author 6 - processed`] = 1
+      author_mat[pub$`Author 7 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 7 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 7 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 7 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 7 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 8 - processed`)) {
+      author_mat[pub$`Author 8 - processed`, pub$`Author 7 - processed`] = 1
+      author_mat[pub$`Author 8 - processed`, pub$`Author 6 - processed`] = 1
+      author_mat[pub$`Author 8 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 8 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 8 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 8 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 8 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 9 - processed`)) {
+      author_mat[pub$`Author 9 - processed`, pub$`Author 8 - processed`] = 1
+      author_mat[pub$`Author 9 - processed`, pub$`Author 7 - processed`] = 1
+      author_mat[pub$`Author 9 - processed`, pub$`Author 6 - processed`] = 1
+      author_mat[pub$`Author 9 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 9 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 9 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 9 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 9 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 10 - processed`)) {
+      author_mat[pub$`Author 10 - processed`, pub$`Author 9 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 8 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 7 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 6 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 10 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 11 - processed`)) {
+      author_mat[pub$`Author 11 - processed`, pub$`Author 10 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 9 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 8 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 7 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 6 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 11 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 12 - processed`)) {
+      author_mat[pub$`Author 12 - processed`, pub$`Author 11 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 10 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 9 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 8 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 7 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 6 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 12 - processed`, pub$`Author 1 - processed`] = 1
+    }
+    if (!is.na(pub$`Author 13 - processed`)) {
+      author_mat[pub$`Author 13 - processed`, pub$`Author 12 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 11 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 10 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 9 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 8 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 7 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 6 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 5 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 4 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 3 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 2 - processed`] = 1
+      author_mat[pub$`Author 13 - processed`, pub$`Author 1 - processed`] = 1
+    }
+  }
+  return(author_mat)
+}
+
 
 
 ################
 ### ANALYSIS ###
 ################
 
+# Read in and process data
 data = read_data(DATA_FILE)
+  # sanity checks
 glimpse(data)
 
 data = process_data(data)
-# sanity checks
+  # sanity checks
 unique(data$`Author 1 - processed`)
 unique(data$`Author 2 - processed`)
 
 
+# Get unique author list for creating matrix
+  # NB: `sort` removes NA
+unique_authors = sort(get_unique_authors(data))
+  # sanity checks
+length(unique_authors)
+sum(is.na(unique_authors)) # check for NAs
 
+# Create matrix
+author_mat = get_author_mat(unique_authors)
+  # sanity check
+sum(author_mat[1,])
+sum(author_mat[,'J Tenenbaum'], author_mat['J Tenenbaum',]) - 2
+author_mat[1,1]
+author_mat[1,2]
 
-
+# Populate matrix
+author_mat = populate_author_mat(author_mat, data)
+  # sanity checks
+sum(author_mat['J Tenenbaum',], author_mat[,'J Tenenbaum']) - 2
 
 
