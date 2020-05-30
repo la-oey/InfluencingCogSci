@@ -185,7 +185,7 @@ get_author_mat = function(unique_authors) {
 
 
 # Function to populate author matrix
-# NB: this populates the bottom right diagonal of the matrix
+# NB: this populates the bottom left diagonal of the matrix
 #     A   B   C
 # A   1   0   0
 # B   1   1   0
