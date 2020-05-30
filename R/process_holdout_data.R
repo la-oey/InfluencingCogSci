@@ -187,10 +187,10 @@ get_author_mat = function(unique_authors) {
 # Function to populate author matrix
 # NB: this populates the upper right diagonal of the matrix
 #     A   B   C
-# A   1   1   1
-# B   0   1   1
-# C   0   0   1
-# Sum columnwise to get an author's pub count: sum(author_mat[,'J Tenenbaum'])
+# A   1   0   0
+# B   1   1   0
+# C   1   1   1
+# Sum columnwise and rowwise to get an author's pub count: sum(author_mat[,'J Tenenbaum'], author_mat['J Tenenbaum',]) - 2
 populate_author_mat = function(author_mat, data) {
   rows = data %>% nrow()
   for (i in 1:rows) {
