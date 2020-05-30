@@ -12,6 +12,7 @@ library(tidyverse)
 
 ### GLOBALS ###
 DATA_FILE = "Erik_Cogsci_2020_finalsub.csv"
+AUTHOR_FILE = "cogsci2020_byAuthor.csv"
 
 
 
@@ -116,6 +117,67 @@ process_data = function(data) {
   return(data)
 }
 
+
+# Function to fetch author data
+# writes a row to the data frame for each unique (author, title) tuple
+get_author_df = function(data) {
+  output_df = data.frame(
+    year = numeric(),
+    title = character(),
+    authorAbbr = character(),
+    stringsAsFactors = F
+  )
+  
+  rows = data %>% nrow()
+  for (i in 1:rows) {
+    pub = data %>% filter(row_number() == i)
+    
+    output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 1 - processed`, stringsAsFactors = F))
+    if (!is.na(pub$`Author 2 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 2 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 3 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 3 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 4 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 4 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 5 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 5 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 6 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 6 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 7 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 7 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 8 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 8 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 9 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 9 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 10 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 10 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 11 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 11 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 12 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 12 - processed`, stringsAsFactors = F))
+    }
+    if (!is.na(pub$`Author 13 - processed`)) {
+      output_df = rbind(output_df, data.frame(year = 2020, title = pub$Title, authorAbbr = pub$`Author 13 - processed`, stringsAsFactors = F))
+    }
+  }
+  
+  return(output_df)
+}
+
+
+########################
+### MATRIX FUNCTIONS ###
+########################
 
 # Function to get list of unique authors from holdout data frame
 get_unique_authors = function(data) {
@@ -314,8 +376,16 @@ glimpse(data)
 
 data = process_data(data)
   # sanity checks
+glimpse(data)
 unique(data$`Author 1 - processed`)
 unique(data$`Author 2 - processed`)
+
+# Generate byAuthor csv: one row for each (authorAbbr, title) tuple
+# i.e. for each publication, make a unique row for each author on the publication
+author_df = get_author_df(data)
+  # sanity check
+glimpse(author_df)
+write_csv(author_df, AUTHOR_FILE)
 
 
 # Get unique author list for creating matrix
@@ -329,13 +399,15 @@ sum(is.na(unique_authors)) # check for NAs
 author_mat = get_author_mat(unique_authors)
   # sanity check
 sum(author_mat[1,])
-sum(author_mat[,'J Tenenbaum'], author_mat['J Tenenbaum',]) - 2
 author_mat[1,1]
 author_mat[1,2]
+sum(author_mat[,'J Tenenbaum'], author_mat['J Tenenbaum',]) - 2
 
 # Populate matrix
 author_mat = populate_author_mat(author_mat, data)
   # sanity checks
 sum(author_mat['J Tenenbaum',], author_mat[,'J Tenenbaum']) - 2
+
+
 
 
