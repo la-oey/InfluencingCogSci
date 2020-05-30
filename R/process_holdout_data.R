@@ -382,7 +382,7 @@ unique(data$`Author 2 - processed`)
 
 # Generate byAuthor csv: one row for each (authorAbbr, title) tuple
 # i.e. for each publication, make a unique row for each author on the publication
-author_df = get_author_df(data)
+author_df = get_author_df(data) # takes ~5s to run
   # sanity check
 glimpse(author_df)
 write_csv(author_df, AUTHOR_FILE)
